@@ -30,15 +30,14 @@ describe("contact icons", () => {
     const resume = createBlankResume();
     resume.personal.customLinks = [{
       id: "portfolio-link",
-      header: "Portfolio",
-      content: "portfolio.example.com",
+      title: "Portfolio",
       url: "https://portfolio.example.com",
       iconUrl: "https://fontawesome.com/icons/link?f=classic&s=solid",
     }];
 
     const markup = renderToStaticMarkup(<ClassicTemplate resume={resume} />);
 
-    expect(markup).toContain("Portfolio: portfolio.example.com");
+    expect(markup).toContain(">Portfolio<");
     expect(markup).toContain('href="https://portfolio.example.com/"');
     expect(markup).toContain("fa-link");
   });

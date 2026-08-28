@@ -1,14 +1,6 @@
-import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import {
-  CONTACT_ICON_KEYS,
-  SUPPORTED_FONT_AWESOME_ICON_NAMES,
-  createFontAwesomeIconUrl,
-  formatFontAwesomeIconName,
-  getFontAwesomeIconName,
-  type SupportedFontAwesomeIconName,
-} from "../../constants/contactIcons";
+import { CONTACT_ICON_KEYS } from "../../constants/contactIcons";
 import type { ContactIconKey, ContactIconUrls } from "../../domain/resume.types";
-import { getFontAwesomeIconDefinition } from "../icons/fontAwesomeRegistry";
+import { FontAwesomeIconPicker } from "../icons/FontAwesomeIconPicker";
 
 const CONTACT_LABELS: Readonly<Record<ContactIconKey, string>> = {
   email: "Email",
@@ -46,36 +38,22 @@ export function ContactIconControls({
       </label>
 
       <div className="contact-icon-grid" aria-disabled={!showContactIcons}>
-        {CONTACT_ICON_KEYS.map((contactKey) => {
-          const url = contactIconUrls[contactKey];
-          const selectedName = getFontAwesomeIconName(url) ?? "";
-          const icon = getFontAwesomeIconDefinition(url);
-          return (
-            <label className="contact-icon-row" key={contactKey}>
-              <span className="contact-icon-label">{CONTACT_LABELS[contactKey]}</span>
-              <span className="icon-preview" aria-hidden="true">
-                {icon ? <FontAwesomeIcon icon={icon} /> : "—"}
-              </span>
-              <select
-                value={selectedName}
-                disabled={!showContactIcons}
-                aria-label={`${CONTACT_LABELS[contactKey]} icon`}
-                onChange={(event) => {
-                  const nextName = event.target.value as SupportedFontAwesomeIconName | "";
-                  onIconUrlsChange({
-                    ...contactIconUrls,
-                    [contactKey]: nextName ? createFontAwesomeIconUrl(nextName) : "",
-                  });
-                }}
-              >
-                <option value="">No icon</option>
-                {SUPPORTED_FONT_AWESOME_ICON_NAMES.map((iconName) => (
-                  <option key={iconName} value={iconName}>{formatFontAwesomeIconName(iconName)}</option>
-                ))}
-              </select>
-            </label>
-          );
-        })}
+        {CONTACT_ICON_KEYS.map((contactKey) => (
+          <div className="contact-icon-row" key={contactKey}>
+            <span className="contact-icon-label">{CONTACT_LABELS[contactKey]}</span>
+            <FontAwesomeIconPicker
+              value={contactIconUrls[contactKey]}
+              label={CONTACT_LABELS[contactKey]}
+              disabled={!showContactIcons}
+              onChange={(iconUrl) =>
+                onIconUrlsChange({
+                  ...contactIconUrls,
+                  [contactKey]: iconUrl,
+                })
+              }
+            />
+          </div>
+        ))}
       </div>
       <p className="icon-persistence-note">
         Selections are saved as official Font Awesome URLs in the downloaded Markdown file.

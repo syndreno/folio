@@ -170,7 +170,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
     { value: resume.personal.linkedin, href: safeWebUrl(resume.personal.linkedin) },
     { value: resume.personal.github, href: safeWebUrl(resume.personal.github) },
     ...resume.personal.customLinks.map((link) => ({
-      value: [link.header, link.content].filter(Boolean).join(": "),
+      value: link.title,
       href: safeWebUrl(link.url),
     })),
   ].filter((contact) => contact.value);

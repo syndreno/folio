@@ -69,18 +69,16 @@ The `custom_links` list stores optional portfolio, blog, social, and other links
 
 ```yaml
 custom_links:
-  - header: "Portfolio"
-    content: "portfolio.example.com"
+  - title: "portfolio.example.com"
     url: "https://portfolio.example.com"
     icon: "https://fontawesome.com/icons/link?f=classic&s=solid"
 ```
 
-- `header` is the user-defined label.
-- `content` is the visible value shown after the label.
+- `title` is the readable linked text shown on the resume.
 - `url` is the clickable HTTP or HTTPS destination.
 - `icon` is an optional supported Font Awesome Free URL.
 
-The preview and ATS PDF keep `header` and `content` as normal text even when an icon is selected. Custom links can be added and edited in **Personal details**, and all four fields are restored when the exported Markdown is uploaded again.
+The preview and ATS PDF keep `title` as normal text even when an icon is selected. Custom links can be added and edited in **Personal details**, and all three fields are restored when the exported Markdown is uploaded again. Older files using `header` and `content` still import; `content` becomes the title when both legacy fields are present.
 
 ## Safety
 

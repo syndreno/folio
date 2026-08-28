@@ -39,8 +39,7 @@ export function createEmptyItem(): ResumeSectionItem {
 export function createPersonalLink(): PersonalLink {
   return {
     id: createId("link"),
-    header: "Portfolio",
-    content: "portfolio.example.com",
+    title: "portfolio.example.com",
     url: "https://portfolio.example.com",
     iconUrl: "https://fontawesome.com/icons/link?f=classic&s=solid",
   };

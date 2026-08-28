@@ -7,6 +7,8 @@ import {
   type ChangeEvent,
   type CSSProperties,
 } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCaretLeft, faCaretRight } from "@fortawesome/free-solid-svg-icons";
 import {
   createBlankResume,
   createEmptyItem,
@@ -23,7 +25,9 @@ import type {
 } from "../domain/resume.types";
 import {
   reorderResumeSections,
+  reorderResumeSectionItems,
   type SectionDropPosition,
+  duplicateResumeSection,
 } from "../domain/resume.transforms";
 import {
   WorkspaceCustomizer,
@@ -33,9 +37,11 @@ import { ResumeEditor } from "../features/editor/ResumeEditor";
 import { parseResumeMarkdown } from "../parsers/markdown/parseResumeMarkdown";
 import { serializeResumeMarkdown } from "../serializers/markdown/serializeResumeMarkdown";
 import { downloadTextFile, isAcceptedMarkdownFile, sanitizeFileName } from "../utils/files";
+import { updateFolioBrowserBranding } from "../utils/favicon";
 
 type EditorTab = "content" | "design" | "ats";
 type MobileView = "editor" | "preview";
+type DesktopPaneLayout = "both" | "editor" | "preview";
 
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
   accentColor: "#245B4E",
@@ -46,6 +52,9 @@ const DEFAULT_WORKSPACE: WorkspaceSettings = {
   density: "comfortable",
   reduceMotion: false,
 };
+
+const LEAVE_PAGE_WARNING =
+  "Return to the start screen? Download your Markdown first if you want to keep these edits.";
 
 const ClassicTemplate = lazy(() =>
   import("../features/templates/classic/ClassicTemplate").then((module) => ({
@@ -228,12 +237,26 @@ export function App() {
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [showHomeDialog, setShowHomeDialog] = useState(false);
+  const [showCloseReminderDialog, setShowCloseReminderDialog] = useState(false);
+  const [sectionPendingDeletion, setSectionPendingDeletion] = useState<{
+    id: string;
+    title: string;
+  } | null>(null);
+  const [desktopPaneLayout, setDesktopPaneLayout] = useState<DesktopPaneLayout>("both");
   const [workspace, setWorkspace] = useState<WorkspaceSettings>(readWorkspaceSettings);
   const uploadRef = useRef<HTMLInputElement>(null);
+  const editorScrollRef = useRef<HTMLDivElement>(null);
+  const markdownIsCurrentRef = useRef(false);
+  const resumeIsOpen = resume !== null;
 
   useEffect(() => {
     localStorage.setItem("folio-workspace-appearance", JSON.stringify(workspace));
   }, [workspace]);
+
+  useEffect(() => {
+    updateFolioBrowserBranding(workspace.accentColor);
+  }, [workspace.accentColor]);
 
   useEffect(() => {
     if (!message) return;
@@ -241,15 +264,36 @@ export function App() {
     return () => window.clearTimeout(dismissTimer);
   }, [message]);
 
+  useEffect(() => {
+    if (!resumeIsOpen) return;
+
+    // Browsers require their own security-controlled dialog for tab/window exits;
+    // unlike in-app confirmations, its wording and appearance cannot be customized.
+    const warnBeforeLeaving = (event: BeforeUnloadEvent) => {
+      if (markdownIsCurrentRef.current) return;
+      // If the user chooses "Stay" in the browser prompt, React renders the
+      // site's download reminder as soon as control returns to this page.
+      setShowCloseReminderDialog(true);
+      event.preventDefault();
+      event.returnValue = LEAVE_PAGE_WARNING;
+    };
+
+    window.addEventListener("beforeunload", warnBeforeLeaving);
+    return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
+  }, [resumeIsOpen]);
+
   const updateResume = (update: (current: ResumeDocument) => ResumeDocument) => {
+    markdownIsCurrentRef.current = false;
     setResume((current) => (current ? update(current) : current));
   };
 
   const importMarkdown = (markdown: string, fileName?: string) => {
     const result = parseResumeMarkdown(markdown, fileName);
+    markdownIsCurrentRef.current = false;
     setResume(result.resume);
     setWarnings(result.warnings);
     setMessage(fileName ? `${fileName} was imported.` : "Example resume loaded.");
+    setDesktopPaneLayout("both");
   };
 
   const handleUpload = async (file: File) => {
@@ -304,8 +348,10 @@ export function App() {
         )}
         <StartScreen
           onCreate={() => {
+            markdownIsCurrentRef.current = false;
             setResume(createBlankResume());
             setWarnings([]);
+            setDesktopPaneLayout("both");
           }}
           onLoadExample={loadExample}
           onUpload={handleUpload}
@@ -378,19 +424,79 @@ export function App() {
     }));
   };
 
+  const reorderItemsFromPreview = (
+    sectionId: string,
+    sourceItemId: string,
+    targetItemId: string,
+    position: SectionDropPosition,
+  ) => {
+    updateResume((current) => ({
+      ...current,
+      sections: reorderResumeSectionItems(
+        current.sections,
+        sectionId,
+        sourceItemId,
+        targetItemId,
+        position,
+      ),
+    }));
+  };
+
+  const selectSectionFromPreview = (sectionId: string) => {
+    setActiveTab("content");
+    setMobileView("editor");
+
+    // Wait for the Content tab (and mobile Editor pane) to render before
+    // locating the matching card and moving the editor viewport to it.
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const scrollContainer = editorScrollRef.current;
+        const sectionCard = Array.from(
+          scrollContainer?.querySelectorAll<HTMLElement>("[data-editor-section-id]") ?? [],
+        ).find((element) => element.dataset.editorSectionId === sectionId);
+        if (!sectionCard) return;
+
+        sectionCard.scrollIntoView({
+          behavior: workspace.reduceMotion ? "auto" : "smooth",
+          block: "start",
+        });
+        sectionCard.querySelector<HTMLInputElement>("input")?.focus({ preventScroll: true });
+      });
+    });
+  };
+
+  const copySection = (sectionId: string) => {
+    const sourceTitle = resume.sections.find((section) => section.id === sectionId)?.title;
+    updateResume((current) => ({
+      ...current,
+      sections: duplicateResumeSection(current.sections, sectionId),
+    }));
+    if (sourceTitle) setMessage(`${sourceTitle} was copied.`);
+  };
+
   const deleteSection = (sectionId: string) => {
-    if (!window.confirm("Delete this section? This cannot be undone in this version.")) return;
+    const section = resume.sections.find((candidate) => candidate.id === sectionId);
+    if (!section) return;
+    setSectionPendingDeletion({ id: section.id, title: section.title });
+  };
+
+  const confirmSectionDeletion = () => {
+    if (!sectionPendingDeletion) return;
+    const sectionToDelete = sectionPendingDeletion;
     updateResume((current) => ({
       ...current,
       sections: current.sections
-        .filter((section) => section.id !== sectionId)
+        .filter((section) => section.id !== sectionToDelete.id)
         .map((section, order) => ({ ...section, order })),
     }));
+    setSectionPendingDeletion(null);
+    setMessage(`${sectionToDelete.title} was deleted.`);
   };
 
   const downloadResume = () => {
     const base = sanitizeFileName(resume.personal.fullName);
     downloadTextFile(serializeResumeMarkdown(resume), `${base}-resume.md`);
+    markdownIsCurrentRef.current = true;
     setMessage("Markdown resume downloaded.");
   };
 
@@ -409,6 +515,19 @@ export function App() {
     }
   };
 
+  const toggleDesktopPane = (pane: "editor" | "preview") => {
+    setDesktopPaneLayout((current) => {
+      if (pane === "editor") {
+        if (current === "both") return "preview";
+        if (current === "preview") return "both";
+        return "preview";
+      }
+      if (current === "both") return "editor";
+      if (current === "editor") return "both";
+      return "editor";
+    });
+  };
+
   const workspaceStyle = {
     "--ui-accent": workspace.accentColor,
     "--ui-font": workspace.fontFamily,
@@ -424,17 +543,182 @@ export function App() {
       data-reduce-motion={workspace.reduceMotion}
       style={workspaceStyle}
     >
+      {showHomeDialog && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowHomeDialog(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setShowHomeDialog(false);
+          }}
+        >
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="return-home-title"
+            aria-describedby="return-home-description"
+          >
+            <div className="confirm-dialog-brand" aria-hidden="true">
+              <span className="brand-mark">F</span>
+            </div>
+            <p className="eyebrow">Before you leave</p>
+            <h2 id="return-home-title">Return to the start screen?</h2>
+            <p id="return-home-description">
+              This resume is saved only in the current browser session. Download your Markdown file first if you want to keep editing it later.
+            </p>
+            <div className="confirm-dialog-note">
+              <strong>Your file stays yours.</strong>
+              <span>The downloaded .md file restores your content and customization choices.</span>
+            </div>
+            <div className="confirm-dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                autoFocus
+                onClick={() => setShowHomeDialog(false)}
+              >
+                Cancel
+              </button>
+              <button
+                className="secondary-button"
+                type="button"
+                onClick={() => {
+                  downloadResume();
+                  setShowHomeDialog(false);
+                }}
+              >
+                Download .md
+              </button>
+              <button
+                className="dialog-danger-button"
+                type="button"
+                onClick={() => {
+                  setShowHomeDialog(false);
+                  setResume(null);
+                  setWarnings([]);
+                  setMessage("");
+                  setDesktopPaneLayout("both");
+                }}
+              >
+                Return home
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {showCloseReminderDialog && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setShowCloseReminderDialog(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setShowCloseReminderDialog(false);
+          }}
+        >
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="close-reminder-title"
+            aria-describedby="close-reminder-description"
+          >
+            <div className="confirm-dialog-brand" aria-hidden="true">
+              <span className="brand-mark">F</span>
+            </div>
+            <p className="eyebrow">Before you leave</p>
+            <h2 id="close-reminder-title">Download your Markdown before closing?</h2>
+            <p id="close-reminder-description">
+              Save a portable copy of this resume before closing the tab so you can upload it and
+              continue editing later.
+            </p>
+            <div className="confirm-dialog-note">
+              <strong>Your latest changes stay in the downloaded file.</strong>
+              <span>After downloading, you can close without another warning unless you edit again.</span>
+            </div>
+            <div className="confirm-dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                autoFocus
+                onClick={() => setShowCloseReminderDialog(false)}
+              >
+                Continue editing
+              </button>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => {
+                  downloadResume();
+                  setShowCloseReminderDialog(false);
+                }}
+              >
+                Download .md
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+      {sectionPendingDeletion && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setSectionPendingDeletion(null);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") setSectionPendingDeletion(null);
+          }}
+        >
+          <section
+            className="confirm-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="delete-section-title"
+            aria-describedby="delete-section-description"
+          >
+            <div className="confirm-dialog-brand" aria-hidden="true">
+              <span className="brand-mark">F</span>
+            </div>
+            <p className="eyebrow">Delete section</p>
+            <h2 id="delete-section-title">Delete this section?</h2>
+            <p id="delete-section-description">
+              <strong>{sectionPendingDeletion.title}</strong> and all of its content will be
+              removed. This cannot be undone in this version.
+            </p>
+            <div className="confirm-dialog-note">
+              <strong>Nothing is removed until you confirm.</strong>
+              <span>You can cancel and download your Markdown first if you need a backup.</span>
+            </div>
+            <div className="confirm-dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                autoFocus
+                onClick={() => setSectionPendingDeletion(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="dialog-danger-button"
+                type="button"
+                onClick={confirmSectionDeletion}
+              >
+                Delete section
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       <header className="app-header">
         <button
           className="brand brand-button"
           type="button"
-          onClick={() => {
-            if (window.confirm("Return to the start screen? Download your Markdown first if you want to keep these edits.")) {
-              setResume(null);
-              setWarnings([]);
-              setMessage("");
-            }
-          }}
+          onClick={() => setShowHomeDialog(true)}
         >
           <span className="brand-mark">F</span><span>Folio</span>
         </button>
@@ -443,6 +727,28 @@ export function App() {
           <span>Saved only in this browser session</span>
         </div>
         <div className="header-actions">
+          <div className="pane-toggle-controls" aria-label="Workspace panes">
+            <button
+              className={`icon-button pane-toggle-button ${desktopPaneLayout !== "preview" ? "active" : ""}`}
+              type="button"
+              aria-label={desktopPaneLayout === "preview" ? "Show editor pane" : "Hide editor pane"}
+              title={desktopPaneLayout === "preview" ? "Show editor" : "Hide editor"}
+              aria-pressed={desktopPaneLayout !== "preview"}
+              onClick={() => toggleDesktopPane("editor")}
+            >
+              <FontAwesomeIcon icon={faCaretLeft} aria-hidden="true" />
+            </button>
+            <button
+              className={`icon-button pane-toggle-button ${desktopPaneLayout !== "editor" ? "active" : ""}`}
+              type="button"
+              aria-label={desktopPaneLayout === "editor" ? "Show preview pane" : "Hide preview pane"}
+              title={desktopPaneLayout === "editor" ? "Show preview" : "Hide preview"}
+              aria-pressed={desktopPaneLayout !== "editor"}
+              onClick={() => toggleDesktopPane("preview")}
+            >
+              <FontAwesomeIcon icon={faCaretRight} aria-hidden="true" />
+            </button>
+          </div>
           <WorkspaceCustomizer
             workspace={workspace}
             onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
@@ -495,14 +801,14 @@ export function App() {
         <button className={mobileView === "preview" ? "active" : ""} onClick={() => setMobileView("preview")}>Preview</button>
       </div>
 
-      <main className="workspace">
+      <main className={`workspace ${desktopPaneLayout}-panes`}>
         <aside className={`editor-pane ${mobileView === "editor" ? "mobile-active" : ""}`}>
           <nav className="editor-tabs" aria-label="Resume editor">
             <button className={activeTab === "content" ? "active" : ""} onClick={() => setActiveTab("content")}>Content</button>
             <button className={activeTab === "design" ? "active" : ""} onClick={() => setActiveTab("design")}>Design</button>
             <button className={activeTab === "ats" ? "active" : ""} onClick={() => setActiveTab("ats")}>ATS</button>
           </nav>
-          <div className="editor-scroll">
+          <div className="editor-scroll" ref={editorScrollRef}>
             {activeTab === "content" ? (
               <ResumeEditor
                 resume={resume}
@@ -557,6 +863,7 @@ export function App() {
                   }))
                 }
                 onMoveSection={moveSection}
+                onDuplicateSection={copySection}
                 onDeleteSection={deleteSection}
                 onAddSection={() =>
                   updateResume((current) => ({
@@ -590,7 +897,12 @@ export function App() {
           </div>
           <div className="preview-scroll">
             <Suspense fallback={<div className="preview-loading">Preparing preview…</div>}>
-              <ClassicTemplate resume={resume} onSectionReorder={reorderSectionsFromPreview} />
+              <ClassicTemplate
+                resume={resume}
+                onSectionReorder={reorderSectionsFromPreview}
+                onItemReorder={reorderItemsFromPreview}
+                onSectionSelect={selectSectionFromPreview}
+              />
             </Suspense>
             <SiteFooter compact />
           </div>

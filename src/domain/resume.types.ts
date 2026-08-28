@@ -24,8 +24,7 @@ export interface ResumeMetadata {
 
 export interface PersonalLink {
   id: string;
-  header: string;
-  content: string;
+  title: string;
   url: string;
   iconUrl: string;
 }

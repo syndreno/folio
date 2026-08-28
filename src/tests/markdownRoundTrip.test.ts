@@ -112,12 +112,11 @@ contact_icons:
     );
   });
 
-  it("restores custom link headers, content, URLs, and icon selections", () => {
+  it("restores custom link titles, URLs, and icon selections", () => {
     const first = parseResumeMarkdown(FIXTURE).resume;
     first.personal.customLinks = [{
       id: "link-portfolio",
-      header: "Portfolio",
-      content: "portfolio.example.com",
+      title: "Portfolio",
       url: "https://portfolio.example.com",
       iconUrl: "https://fontawesome.com/icons/link?f=classic&s=solid",
     }];
@@ -127,9 +126,9 @@ contact_icons:
     const restored = second.personal.customLinks[0];
 
     expect(exported).toContain("custom_links:");
+    expect(exported).toContain("title: Portfolio");
     expect(restored).toMatchObject({
-      header: "Portfolio",
-      content: "portfolio.example.com",
+      title: "Portfolio",
       url: "https://portfolio.example.com",
       iconUrl: "https://fontawesome.com/icons/link?f=classic&s=solid",
     });
@@ -150,8 +149,7 @@ custom_links:
 - TypeScript`);
 
     expect(result.resume.personal.customLinks[0]).toMatchObject({
-      header: "Portfolio",
-      content: "View work",
+      title: "View work",
       url: "javascript:alert(1)",
       iconUrl: "",
     });

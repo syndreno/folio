@@ -53,8 +53,7 @@ export function serializeResumeMarkdown(resume: ResumeDocument): string {
     linkedin: resume.personal.linkedin,
     github: resume.personal.github,
     custom_links: resume.personal.customLinks.map((link) => ({
-      header: link.header,
-      content: link.content,
+      title: link.title,
       url: link.url,
       icon: link.iconUrl,
     })),

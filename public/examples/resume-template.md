@@ -29,8 +29,7 @@ contact_icons:
   linkedin: "https://fontawesome.com/icons/linkedin?f=brands&s=brands"
   github: "https://fontawesome.com/icons/github?f=brands&s=brands"
 custom_links:
-  - header: "Portfolio"
-    content: "portfolio.example.com"
+  - title: "portfolio.example.com"
     url: "https://portfolio.example.com"
     icon: "https://fontawesome.com/icons/link?f=classic&s=solid"
 section_order:
@@ -68,8 +67,7 @@ Contact icons:
 Additional links:
 - Add, edit, or remove entries under custom_links for a portfolio, blog, or
   another profile.
-- header and content are displayed as readable text, for example
-  "Portfolio: portfolio.example.com".
+- title is the readable linked text shown on the resume.
 - url is the clickable HTTP or HTTPS destination.
 - icon accepts the same supported official Font Awesome Free URLs listed above.
 

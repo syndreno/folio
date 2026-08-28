@@ -28,8 +28,7 @@ contact_icons:
   linkedin: "https://fontawesome.com/icons/linkedin?f=brands&s=brands"
   github: "https://fontawesome.com/icons/github?f=brands&s=brands"
 custom_links:
-  - header: "Engineering Blog"
-    content: "aaravmehta.example.com/blog"
+  - title: "aaravmehta.example.com/blog"
     url: "https://aaravmehta.example.com/blog"
     icon: "https://fontawesome.com/icons/link?f=classic&s=solid"
 section_order:

@@ -282,8 +282,9 @@ function parseCustomLinks(data: Record<string, unknown>, warnings: string[]): Pe
       return [];
     }
 
-    const header = toStringValue(candidate, "header", "").trim();
-    const content = toStringValue(candidate, "content", "").trim();
+    const title = toStringValue(candidate, "title", "").trim()
+      || toStringValue(candidate, "content", "").trim()
+      || toStringValue(candidate, "header", "").trim();
     const url = toStringValue(candidate, "url", "").trim();
     const configuredIcon = toStringValue(candidate, "icon", "").trim();
     let iconUrl = "";
@@ -293,21 +294,20 @@ function parseCustomLinks(data: Record<string, unknown>, warnings: string[]): Pe
         iconUrl = configuredIcon;
       } else {
         warnings.push(
-          `The icon for custom link “${header || content || index + 1}” is not a supported Font Awesome Free icon.`,
+          `The icon for custom link “${title || index + 1}” is not a supported Font Awesome Free icon.`,
         );
       }
     }
     if (url && !safeWebUrlSchema.safeParse(url).success) {
       warnings.push(
-        `The URL for custom link “${header || content || index + 1}” is not a safe HTTP or HTTPS URL and will not be linked.`,
+        `The URL for custom link “${title || index + 1}” is not a safe HTTP or HTTPS URL and will not be linked.`,
       );
     }
-    if (!header && !content && !url) return [];
+    if (!title && !url) return [];
 
     return [{
       id: createId("link"),
-      header,
-      content,
+      title,
       url,
       iconUrl,
     }];

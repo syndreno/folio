@@ -58,6 +58,8 @@ export function createFontAwesomeIconUrl(iconName: SupportedFontAwesomeIconName)
 }
 
 export function formatFontAwesomeIconName(iconName: SupportedFontAwesomeIconName): string {
+  if (iconName === "github") return "GitHub";
+  if (iconName === "linkedin") return "LinkedIn";
   return iconName
     .split("-")
     .map((word) => word.charAt(0).toLocaleUpperCase("en") + word.slice(1))

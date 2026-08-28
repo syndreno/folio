@@ -1,3 +1,6 @@
+import { useState } from "react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faCopy } from "@fortawesome/free-solid-svg-icons";
 import type {
   PersonalDetails,
   PersonalLink,
@@ -6,6 +9,7 @@ import type {
   ResumeSectionItem,
 } from "../../domain/resume.types";
 import { PersonalLinkEditor } from "./PersonalLinkEditor";
+import { parseBulletDraft } from "./bulletDraft";
 
 type PersonalTextField = Exclude<keyof PersonalDetails, "customLinks">;
 
@@ -24,6 +28,7 @@ interface ResumeEditorProps {
   onAddItem: (sectionId: string) => void;
   onDeleteItem: (sectionId: string, itemId: string) => void;
   onMoveSection: (sectionId: string, direction: -1 | 1) => void;
+  onDuplicateSection: (sectionId: string) => void;
   onDeleteSection: (sectionId: string) => void;
   onAddSection: () => void;
 }
@@ -64,6 +69,8 @@ function EntryEditor({
   onChange: (patch: Partial<ResumeSectionItem>) => void;
   onDelete: () => void;
 }) {
+  const [bulletDraft, setBulletDraft] = useState(() => item.bullets.join("\n"));
+
   if (simple) {
     return (
       <div className="inline-entry">
@@ -118,10 +125,11 @@ function EntryEditor({
         Bullets <span className="label-hint">One per line</span>
         <textarea
           rows={4}
-          value={item.bullets.join("\n")}
-          onChange={(event) =>
-            onChange({ bullets: event.target.value.split("\n").filter((line) => line.trim()) })
-          }
+          value={bulletDraft}
+          onChange={(event) => {
+            setBulletDraft(event.target.value);
+            onChange({ bullets: parseBulletDraft(event.target.value) });
+          }}
         />
       </label>
       <button className="text-button danger" type="button" onClick={onDelete}>
@@ -142,6 +150,7 @@ export function ResumeEditor({
   onAddItem,
   onDeleteItem,
   onMoveSection,
+  onDuplicateSection,
   onDeleteSection,
   onAddSection,
 }: ResumeEditorProps) {
@@ -194,7 +203,7 @@ export function ResumeEditor({
           ))}
           {resume.personal.customLinks.length === 0 && (
             <p className="empty-link-note">
-              No additional links yet. Each link can have its own header, content, URL, and icon.
+              No additional links yet. Each link can have its own title, URL, and icon.
             </p>
           )}
         </div>
@@ -203,7 +212,7 @@ export function ResumeEditor({
       {sections.map((section, index) => {
         const simple = SIMPLE_LIST_TYPES.has(section.type);
         return (
-          <section className="editor-card" key={section.id}>
+          <section className="editor-card" data-editor-section-id={section.id} key={section.id}>
             <div className="section-toolbar">
               <label className="grow-field">
                 Section title
@@ -237,6 +246,15 @@ export function ResumeEditor({
                   onClick={() => onSectionChange(section.id, { visible: !section.visible })}
                 >
                   {section.visible ? "Hide" : "Show"}
+                </button>
+                <button
+                  className="icon-button"
+                  type="button"
+                  onClick={() => onDuplicateSection(section.id)}
+                  aria-label={`Copy ${section.title}`}
+                  title={`Copy ${section.title}`}
+                >
+                  <FontAwesomeIcon icon={faCopy} aria-hidden="true" />
                 </button>
                 <button
                   className="icon-button danger"

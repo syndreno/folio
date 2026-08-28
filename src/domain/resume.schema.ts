@@ -39,6 +39,8 @@ export const frontMatterSchema = z.looseObject({
     .optional(),
   custom_links: z
     .array(z.object({
+      title: z.string().optional(),
+      // Legacy fields remain accepted so older exported Markdown still imports.
       header: z.string().optional(),
       content: z.string().optional(),
       url: z.string().optional(),

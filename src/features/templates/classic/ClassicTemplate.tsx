@@ -21,8 +21,8 @@ const PAGINATION_SAFETY_PIXELS = 4;
 type PreviewBlock =
   | { id: string; kind: "heading"; sectionId: string; title: string }
   | { id: string; kind: "summary"; content: string }
-  | { id: string; kind: "simple-items"; items: ResumeSectionItem[] }
-  | { id: string; kind: "entry"; item: ResumeSectionItem };
+  | { id: string; kind: "simple-items"; sectionId: string; items: ResumeSectionItem[] }
+  | { id: string; kind: "entry"; sectionId: string; item: ResumeSectionItem };
 
 function safeHref(value: string): string | undefined {
   if (!value) return undefined;
@@ -79,6 +79,7 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
       blocks.push({
         id: `${section.id}-simple-${simpleItems[0]?.id ?? blocks.length}`,
         kind: "simple-items",
+        sectionId: section.id,
         items: simpleItems,
       });
       simpleItems = [];
@@ -95,7 +96,12 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
       }
 
       flushSimpleItems();
-      blocks.push({ id: `${section.id}-entry-${item.id}`, kind: "entry", item });
+      blocks.push({
+        id: `${section.id}-entry-${item.id}`,
+        kind: "entry",
+        sectionId: section.id,
+        item,
+      });
     });
     flushSimpleItems();
 
@@ -113,7 +119,7 @@ function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument;
     { key: "github", value: resume.personal.github, href: safeHref(resume.personal.github), iconUrl: resume.design.contactIconUrls.github },
     ...resume.personal.customLinks.map((link) => ({
       key: link.id,
-      value: [link.header, link.content].filter(Boolean).join(": "),
+      value: link.title,
       href: safeHref(link.url),
       iconUrl: link.iconUrl,
     })),
@@ -142,7 +148,7 @@ function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument;
   );
 }
 
-type HeadingDragAttributes = Pick<
+type PreviewDragAttributes = Pick<
   HTMLAttributes<HTMLElement>,
   "draggable" | "onDragStart" | "onDragOver" | "onDrop" | "onDragEnd"
 >;
@@ -152,11 +158,20 @@ function PreviewBlockContent({
   measurement = false,
   headingDragAttributes,
   headingDragClass = "",
+  onHeadingSelect,
+  getItemDragAttributes,
+  getItemDragClassName,
 }: {
   block: PreviewBlock;
   measurement?: boolean;
-  headingDragAttributes?: HeadingDragAttributes;
+  headingDragAttributes?: PreviewDragAttributes;
   headingDragClass?: string;
+  onHeadingSelect?: () => void;
+  getItemDragAttributes?: (
+    item: ResumeSectionItem,
+    layout: "horizontal" | "vertical",
+  ) => PreviewDragAttributes;
+  getItemDragClassName?: (itemId: string) => string;
 }) {
   const measurementAttributes = measurement ? { "data-preview-block": block.id } : {};
 
@@ -169,7 +184,18 @@ function PreviewBlockContent({
         {...headingDragAttributes}
       >
         {headingDragAttributes && <span className="preview-drag-handle" aria-hidden="true">⋮⋮</span>}
-        <h2>{block.title}</h2>
+        <h2>
+          {onHeadingSelect ? (
+            <button
+              className="preview-section-link"
+              type="button"
+              onClick={onHeadingSelect}
+              title={`Edit ${block.title}`}
+            >
+              {block.title}
+            </button>
+          ) : block.title}
+        </h2>
       </section>
     );
   }
@@ -185,14 +211,33 @@ function PreviewBlockContent({
   if (block.kind === "simple-items") {
     return (
       <div className="resume-preview-block resume-entry-list simple-entry-list" {...measurementAttributes}>
-        {block.items.map((item) => <span className="simple-pill" key={item.id}>{item.title}</span>)}
+        {block.items.map((item) => {
+          const dragAttributes = getItemDragAttributes?.(item, "horizontal");
+          return (
+            <span
+              className={`simple-pill ${getItemDragClassName?.(item.id) ?? ""}`.trim()}
+              key={item.id}
+              title={dragAttributes ? `Drag ${item.title} to reorder` : undefined}
+              {...dragAttributes}
+            >
+              {item.title}
+            </span>
+          );
+        })}
       </div>
     );
   }
 
   const { item } = block;
+  const dragAttributes = getItemDragAttributes?.(item, "vertical");
   return (
-    <article className="resume-preview-block resume-entry" {...measurementAttributes}>
+    <article
+      className={`resume-preview-block resume-entry ${getItemDragClassName?.(item.id) ?? ""}`.trim()}
+      title={dragAttributes ? `Drag ${item.title} to reorder` : undefined}
+      {...measurementAttributes}
+      {...dragAttributes}
+    >
+      {dragAttributes && <span className="preview-entry-drag-handle" aria-hidden="true">⋮⋮</span>}
       <div className="entry-heading-row">
         <h3>{item.title}</h3>
         {item.meta && <p>{item.meta}</p>}
@@ -211,6 +256,8 @@ function PreviewBlockContent({
 export function ClassicTemplate({
   resume,
   onSectionReorder,
+  onItemReorder,
+  onSectionSelect,
 }: {
   resume: ResumeDocument;
   onSectionReorder?: (
@@ -218,6 +265,13 @@ export function ClassicTemplate({
     targetSectionId: string,
     position: SectionDropPosition,
   ) => void;
+  onItemReorder?: (
+    sectionId: string,
+    sourceItemId: string,
+    targetItemId: string,
+    position: SectionDropPosition,
+  ) => void;
+  onSectionSelect?: (sectionId: string) => void;
 }) {
   const blocks = useMemo(() => createPreviewBlocks(resume), [resume]);
   const blockMap = useMemo(
@@ -226,11 +280,18 @@ export function ClassicTemplate({
   );
   const measurementPageRef = useRef<HTMLElement>(null);
   const draggedSectionIdRef = useRef<string | null>(null);
+  const draggedItemRef = useRef<{ sectionId: string; itemId: string } | null>(null);
   const [pageBlockIds, setPageBlockIds] = useState<string[][]>(() => [blocks.map((block) => block.id)]);
   const [draggedSectionId, setDraggedSectionId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{
     sectionId: string;
     position: SectionDropPosition;
+  } | null>(null);
+  const [draggedItemId, setDraggedItemId] = useState<string | null>(null);
+  const [itemDropTarget, setItemDropTarget] = useState<{
+    itemId: string;
+    position: SectionDropPosition;
+    layout: "horizontal" | "vertical";
   } | null>(null);
   const style = {
     "--resume-accent": resume.design.accentColor,
@@ -277,15 +338,28 @@ export function ClassicTemplate({
 
   const pageSizeClass = resume.design.pageSize === "LETTER" ? "letter" : "a4";
 
-  const getDropPosition = (event: DragEvent<HTMLElement>): SectionDropPosition => {
+  const getDropPosition = (
+    event: DragEvent<HTMLElement>,
+    layout: "horizontal" | "vertical" = "vertical",
+  ): SectionDropPosition => {
     const bounds = event.currentTarget.getBoundingClientRect();
-    return event.clientY < bounds.top + bounds.height / 2 ? "before" : "after";
+    const pointerPosition = layout === "horizontal" ? event.clientX : event.clientY;
+    const midpoint = layout === "horizontal"
+      ? bounds.left + bounds.width / 2
+      : bounds.top + bounds.height / 2;
+    return pointerPosition < midpoint ? "before" : "after";
   };
 
   const finishDragging = () => {
     draggedSectionIdRef.current = null;
     setDraggedSectionId(null);
     setDropTarget(null);
+  };
+
+  const finishItemDragging = () => {
+    draggedItemRef.current = null;
+    setDraggedItemId(null);
+    setItemDropTarget(null);
   };
 
   return (
@@ -304,8 +378,91 @@ export function ClassicTemplate({
             {page.map((blockId) => {
               const block = blockMap.get(blockId);
               if (!block) return null;
-              if (block.kind !== "heading" || !onSectionReorder) {
-                return <PreviewBlockContent block={block} key={block.id} />;
+              if (block.kind !== "heading") {
+                if (
+                  !onItemReorder
+                  || (block.kind !== "entry" && block.kind !== "simple-items")
+                ) {
+                  return <PreviewBlockContent block={block} key={block.id} />;
+                }
+
+                const createItemDragAttributes = (
+                  item: ResumeSectionItem,
+                  layout: "horizontal" | "vertical",
+                ): PreviewDragAttributes => ({
+                  draggable: true,
+                  onDragStart: (event) => {
+                    event.dataTransfer.effectAllowed = "move";
+                    event.dataTransfer.setData("text/plain", item.id);
+                    draggedItemRef.current = { sectionId: block.sectionId, itemId: item.id };
+                    setDraggedItemId(item.id);
+                  },
+                  onDragOver: (event) => {
+                    const activeItem = draggedItemRef.current;
+                    if (
+                      !activeItem
+                      || activeItem.sectionId !== block.sectionId
+                      || activeItem.itemId === item.id
+                    ) return;
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    const position = getDropPosition(event, layout);
+                    setItemDropTarget((current) =>
+                      current?.itemId === item.id
+                        && current.position === position
+                        && current.layout === layout
+                        ? current
+                        : { itemId: item.id, position, layout },
+                    );
+                  },
+                  onDrop: (event) => {
+                    event.preventDefault();
+                    const activeItem = draggedItemRef.current;
+                    const sourceItemId = event.dataTransfer.getData("text/plain")
+                      || activeItem?.itemId;
+                    if (
+                      activeItem?.sectionId === block.sectionId
+                      && sourceItemId
+                      && sourceItemId !== item.id
+                    ) {
+                      onItemReorder(
+                        block.sectionId,
+                        sourceItemId,
+                        item.id,
+                        getDropPosition(event, layout),
+                      );
+                    }
+                    finishItemDragging();
+                  },
+                  onDragEnd: finishItemDragging,
+                });
+
+                return (
+                  <PreviewBlockContent
+                    block={block}
+                    key={block.id}
+                    getItemDragAttributes={createItemDragAttributes}
+                    getItemDragClassName={(itemId) => {
+                      const draggingClass = draggedItemId === itemId ? "is-dragging" : "";
+                      const targetClass = itemDropTarget?.itemId === itemId
+                        ? `item-drop-${itemDropTarget.layout}-${itemDropTarget.position}`
+                        : "";
+                      return `preview-draggable-item ${draggingClass} ${targetClass}`;
+                    }}
+                  />
+                );
+              }
+
+              if (!onSectionReorder) {
+                return (
+                  <PreviewBlockContent
+                    block={block}
+                    key={block.id}
+                    onHeadingSelect={
+                      onSectionSelect ? () => onSectionSelect(block.sectionId) : undefined
+                    }
+                  />
+                );
               }
 
               const dropClass = dropTarget?.sectionId === block.sectionId
@@ -316,6 +473,9 @@ export function ClassicTemplate({
                 <PreviewBlockContent
                   block={block}
                   key={block.id}
+                  onHeadingSelect={
+                    onSectionSelect ? () => onSectionSelect(block.sectionId) : undefined
+                  }
                   headingDragClass={`preview-draggable-heading ${dragClass} ${dropClass}`}
                   headingDragAttributes={{
                     draggable: true,
