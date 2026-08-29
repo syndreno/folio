@@ -56,6 +56,21 @@ describe("status notifications", () => {
     expect(dialog?.textContent).toContain("Download .md");
     expect(document.activeElement?.textContent).toBe("Cancel");
 
+    act(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Tab",
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true,
+    })));
+    expect(document.activeElement?.textContent).toBe("Return home");
+
+    act(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", {
+      key: "Tab",
+      bubbles: true,
+      cancelable: true,
+    })));
+    expect(document.activeElement?.textContent).toBe("Cancel");
+
     const returnHomeButton = Array.from(dialog?.querySelectorAll("button") ?? [])
       .find((button) => button.textContent === "Return home");
     act(() => returnHomeButton?.click());

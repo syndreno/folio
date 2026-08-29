@@ -135,6 +135,60 @@ contact_icons:
     expect(restored?.id).not.toBe("link-portfolio");
   });
 
+  it("restores supported templates and safely falls back from unknown templates", () => {
+    const resume = parseResumeMarkdown(FIXTURE).resume;
+    resume.design.templateId = "modern";
+
+    const exported = serializeResumeMarkdown(resume);
+    const restored = parseResumeMarkdown(exported);
+    expect(exported).toContain("template: modern");
+    expect(restored.resume.design.templateId).toBe("modern");
+
+    const unsupported = parseResumeMarkdown(`---
+template: future-template
+---
+
+# Skills
+
+- TypeScript`);
+    expect(unsupported.resume.design.templateId).toBe("classic");
+    expect(unsupported.warnings).toContain(
+      "The template “future-template” is not available, so Classic ATS was selected.",
+    );
+  });
+
+  it("round-trips spacing and photo presentation settings", () => {
+    const resume = parseResumeMarkdown(FIXTURE).resume;
+    resume.personal.photo = "data:image/webp;base64,aGVsbG8=";
+    resume.design.templateId = "professional";
+    resume.design.showPhoto = true;
+    resume.design.photoShape = "rounded";
+    resume.design.photoZoom = 1.4;
+    resume.design.photoPositionX = 35;
+    resume.design.photoPositionY = 62;
+    resume.design.letterSpacing = 0.2;
+    resume.design.sectionSpacing = 18;
+    resume.design.entrySpacing = 9;
+    resume.design.pageMargin = 16;
+    resume.design.headingSize = 11;
+
+    const restored = parseResumeMarkdown(serializeResumeMarkdown(resume)).resume;
+    expect(restored.personal.photo).toBe(resume.personal.photo);
+    expect(restored.design).toMatchObject({
+      templateId: "professional",
+      showPhoto: true,
+      photoShape: "rounded",
+      photoZoom: 1.4,
+      photoPositionX: 35,
+      photoPositionY: 62,
+      letterSpacing: 0.2,
+      sectionSpacing: 18,
+      entrySpacing: 9,
+      pageMargin: 16,
+      headingSize: 11,
+    });
+  });
+
   it("does not activate unsafe custom link destinations or icon sources", () => {
     const result = parseResumeMarkdown(`---
 custom_links:

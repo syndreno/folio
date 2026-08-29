@@ -13,9 +13,9 @@ import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.t
 import type { SectionDropPosition } from "../../../domain/resume.transforms";
 import { getFontAwesomeIconDefinition } from "../../icons/fontAwesomeRegistry";
 import { paginatePreviewBlocks } from "./paginatePreviewBlocks";
+import type { ResumeTemplateProps } from "../template.types";
 
 const CSS_PIXELS_PER_MILLIMETRE = 96 / 25.4;
-const PAGE_VERTICAL_PADDING_MM = 34;
 const PAGINATION_SAFETY_PIXELS = 4;
 
 type PreviewBlock =
@@ -124,25 +124,44 @@ function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument;
       iconUrl: link.iconUrl,
     })),
   ].filter((contact) => contact.value);
+  const showPhoto = resume.design.templateId === "professional"
+    && resume.design.showPhoto
+    && Boolean(resume.personal.photo);
 
   return (
-    <header className="resume-header" data-preview-header={measurement ? "true" : undefined}>
-      <h1>{resume.personal.fullName || "Your Name"}</h1>
-      <p className="resume-role">{resume.personal.professionalTitle}</p>
-      <div className={`resume-contact ${resume.design.showContactIcons ? "with-icons" : "without-icons"}`}>
-        {contacts.map((contact) => (
-          <span className="contact-item" key={contact.key}>
-            <ContactValue
-              value={contact.value}
-              href={contact.href}
-              icon={
-                resume.design.showContactIcons
-                  ? getFontAwesomeIconDefinition(contact.iconUrl)
-                  : undefined
-              }
+    <header className={`resume-header ${showPhoto ? "with-photo" : ""}`} data-preview-header={measurement ? "true" : undefined}>
+      <div className="resume-header-main">
+        <div className="resume-header-copy">
+          <h1>{resume.personal.fullName || "Your Name"}</h1>
+          <p className="resume-role">{resume.personal.professionalTitle}</p>
+          <div className={`resume-contact ${resume.design.showContactIcons ? "with-icons" : "without-icons"}`}>
+            {contacts.map((contact) => (
+              <span className="contact-item" key={contact.key}>
+                <ContactValue
+                  value={contact.value}
+                  href={contact.href}
+                  icon={
+                    resume.design.showContactIcons
+                      ? getFontAwesomeIconDefinition(contact.iconUrl)
+                      : undefined
+                  }
+                />
+              </span>
+            ))}
+          </div>
+        </div>
+        {showPhoto && (
+          <div className={`resume-photo photo-shape-${resume.design.photoShape}`}>
+            <img
+              alt=""
+              src={resume.personal.photo}
+              style={{
+                objectPosition: `${resume.design.photoPositionX}% ${resume.design.photoPositionY}%`,
+                transform: `scale(${resume.design.photoZoom})`,
+              }}
             />
-          </span>
-        ))}
+          </div>
+        )}
       </div>
     </header>
   );
@@ -258,21 +277,7 @@ export function ClassicTemplate({
   onSectionReorder,
   onItemReorder,
   onSectionSelect,
-}: {
-  resume: ResumeDocument;
-  onSectionReorder?: (
-    sourceSectionId: string,
-    targetSectionId: string,
-    position: SectionDropPosition,
-  ) => void;
-  onItemReorder?: (
-    sectionId: string,
-    sourceItemId: string,
-    targetItemId: string,
-    position: SectionDropPosition,
-  ) => void;
-  onSectionSelect?: (sectionId: string) => void;
-}) {
+}: ResumeTemplateProps) {
   const blocks = useMemo(() => createPreviewBlocks(resume), [resume]);
   const blockMap = useMemo(
     () => new Map(blocks.map((block) => [block.id, block])),
@@ -302,6 +307,11 @@ export function ClassicTemplate({
     "--resume-font-size": `${resume.design.fontSize}pt`,
     "--resume-bullet-size": `${resume.design.bulletSize}pt`,
     "--resume-line-height": resume.design.lineHeight,
+    "--resume-letter-spacing": `${resume.design.letterSpacing}pt`,
+    "--resume-section-spacing": `${resume.design.sectionSpacing}pt`,
+    "--resume-entry-spacing": `${resume.design.entrySpacing}pt`,
+    "--resume-page-margin": `${resume.design.pageMargin}mm`,
+    "--resume-heading-size": `${resume.design.headingSize}pt`,
   } as CSSProperties;
 
   useLayoutEffect(() => {
@@ -324,7 +334,7 @@ export function ClassicTemplate({
       height: measuredHeights.get(block.id) ?? 0,
     }));
     const pageHeightMm = resume.design.pageSize === "LETTER" ? 279.4 : 297;
-    const contentHeight = (pageHeightMm - PAGE_VERTICAL_PADDING_MM)
+    const contentHeight = (pageHeightMm - resume.design.pageMargin * 2)
       * CSS_PIXELS_PER_MILLIMETRE
       - PAGINATION_SAFETY_PIXELS;
     const nextPages = paginatePreviewBlocks(measuredBlocks, headerHeight, contentHeight);
@@ -334,9 +344,10 @@ export function ClassicTemplate({
       const nextSignature = nextPages.map((page) => page.join("|")).join("||");
       return currentSignature === nextSignature ? currentPages : nextPages;
     });
-  }, [blocks, resume.design.pageSize]);
+  }, [blocks, resume.design.pageMargin, resume.design.pageSize]);
 
   const pageSizeClass = resume.design.pageSize === "LETTER" ? "letter" : "a4";
+  const templateClass = `template-${resume.design.templateId}`;
 
   const getDropPosition = (
     event: DragEvent<HTMLElement>,
@@ -370,7 +381,7 @@ export function ClassicTemplate({
             Page {pageIndex + 1} of {pageBlockIds.length}
           </span>
           <article
-            className={`resume-page ${pageSizeClass}`}
+            className={`resume-page ${pageSizeClass} ${templateClass}`}
             style={style}
             aria-label={`${resume.personal.fullName || "Resume"} preview, page ${pageIndex + 1} of ${pageBlockIds.length}`}
           >
@@ -520,7 +531,7 @@ export function ClassicTemplate({
 
       <article
         ref={measurementPageRef}
-        className={`resume-page resume-measurement ${pageSizeClass}`}
+        className={`resume-page resume-measurement ${pageSizeClass} ${templateClass}`}
         style={style}
         aria-hidden="true"
       >

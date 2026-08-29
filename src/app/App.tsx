@@ -13,6 +13,7 @@ import {
   faArrowRotateRight,
   faCaretLeft,
   faCaretRight,
+  faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import {
   createBlankResume,
@@ -40,14 +41,22 @@ import {
 } from "../features/design/WorkspaceCustomizer";
 import { ResumeEditor } from "../features/editor/ResumeEditor";
 import { useResumeHistory } from "../features/editor/useResumeHistory";
+import { TEMPLATE_REGISTRY } from "../features/templates/registry";
 import { parseResumeMarkdown } from "../parsers/markdown/parseResumeMarkdown";
 import { serializeResumeMarkdown } from "../serializers/markdown/serializeResumeMarkdown";
 import { downloadTextFile, isAcceptedMarkdownFile, sanitizeFileName } from "../utils/files";
 import { updateFolioBrowserBranding } from "../utils/favicon";
+import {
+  deleteResumeDraft,
+  loadResumeDraft,
+  saveResumeDraft,
+  type ResumeDraft,
+} from "../services/resumeDraftStore";
 
 type EditorTab = "content" | "design" | "ats";
 type MobileView = "editor" | "preview";
 type DesktopPaneLayout = "both" | "editor" | "preview";
+type ExportFormat = "pdf" | "docx" | "png" | "jpeg";
 
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
   accentColor: "#245B4E",
@@ -61,12 +70,11 @@ const DEFAULT_WORKSPACE: WorkspaceSettings = {
 
 const LEAVE_PAGE_WARNING =
   "Return to the start screen? Download your Markdown first if you want to keep these edits.";
+const AUTOSAVE_SETTING_KEY = "folio-resume-autosave-enabled";
 
-const ClassicTemplate = lazy(() =>
-  import("../features/templates/classic/ClassicTemplate").then((module) => ({
-    default: module.ClassicTemplate,
-  })),
-);
+function readAutosaveSetting(): boolean {
+  return localStorage.getItem(AUTOSAVE_SETTING_KEY) !== "false";
+}
 
 const AtsPanel = lazy(() =>
   import("../features/ats/AtsPanel").then((module) => ({ default: module.AtsPanel })),
@@ -146,6 +154,12 @@ function StartScreen({
   workspace,
   onWorkspaceChange,
   busy,
+  draft,
+  draftStatus,
+  autosaveEnabled,
+  onAutosaveChange,
+  onRestoreDraft,
+  onDeleteDraft,
 }: {
   onCreate: () => void;
   onLoadExample: () => void;
@@ -153,13 +167,19 @@ function StartScreen({
   workspace: WorkspaceSettings;
   onWorkspaceChange: (patch: Partial<WorkspaceSettings>) => void;
   busy: boolean;
+  draft: ResumeDraft | null;
+  draftStatus: "checking" | "ready" | "unavailable";
+  autosaveEnabled: boolean;
+  onAutosaveChange: (enabled: boolean) => void;
+  onRestoreDraft: () => void;
+  onDeleteDraft: () => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   return (
     <main className="welcome-shell">
       <nav className="welcome-nav" aria-label="Main navigation">
-        <a className="brand" href="/" aria-label="Folio home">
+        <a className="brand" href={import.meta.env.BASE_URL} aria-label="Folio home">
           <span className="brand-mark">F</span>
           <span>Folio</span>
         </a>
@@ -203,6 +223,31 @@ function StartScreen({
             <a className="link-button" href={`${import.meta.env.BASE_URL}examples/resume-template.md`} download>
               Download the .md template
             </a>
+          </div>
+          <div className="draft-controls" aria-label="Local draft controls">
+            <label className="checkbox-field">
+              <input
+                type="checkbox"
+                checked={autosaveEnabled}
+                onChange={(event) => onAutosaveChange(event.target.checked)}
+              />
+              <span>
+                Browser-local autosave
+                <small>Stores resume content only in this browser using IndexedDB.</small>
+              </span>
+            </label>
+            {draftStatus === "checking" && <p role="status">Checking for a local draft…</p>}
+            {draftStatus === "unavailable" && <p>Local drafts are unavailable in this browser.</p>}
+            {draft && (
+              <div className="draft-available">
+                <div>
+                  <strong>{draft.fileName}</strong>
+                  <span>Saved {new Date(draft.savedAt).toLocaleString()}</span>
+                </div>
+                <button className="secondary-button" type="button" onClick={onRestoreDraft}>Restore draft</button>
+                <button className="text-button danger" type="button" onClick={onDeleteDraft}>Delete local draft</button>
+              </div>
+            )}
           </div>
         </div>
 
@@ -250,7 +295,8 @@ export function App() {
   const [warnings, setWarnings] = useState<string[]>([]);
   const [message, setMessage] = useState<string>("");
   const [busy, setBusy] = useState(false);
-  const [exportingPdf, setExportingPdf] = useState(false);
+  const [exportingFormat, setExportingFormat] = useState<ExportFormat | null>(null);
+  const [showExportDialog, setShowExportDialog] = useState(false);
   const [showHomeDialog, setShowHomeDialog] = useState(false);
   const [showCloseReminderDialog, setShowCloseReminderDialog] = useState(false);
   const [sectionPendingDeletion, setSectionPendingDeletion] = useState<{
@@ -259,6 +305,10 @@ export function App() {
   } | null>(null);
   const [desktopPaneLayout, setDesktopPaneLayout] = useState<DesktopPaneLayout>("both");
   const [workspace, setWorkspace] = useState<WorkspaceSettings>(readWorkspaceSettings);
+  const [autosaveEnabled, setAutosaveEnabled] = useState(readAutosaveSetting);
+  const [draft, setDraft] = useState<ResumeDraft | null>(null);
+  const [draftStatus, setDraftStatus] = useState<"checking" | "ready" | "unavailable">("checking");
+  const [lastDraftSavedAt, setLastDraftSavedAt] = useState<string | null>(null);
   const uploadRef = useRef<HTMLInputElement>(null);
   const editorScrollRef = useRef<HTMLDivElement>(null);
   const markdownIsCurrentRef = useRef(false);
@@ -267,6 +317,40 @@ export function App() {
   useEffect(() => {
     localStorage.setItem("folio-workspace-appearance", JSON.stringify(workspace));
   }, [workspace]);
+
+  useEffect(() => {
+    localStorage.setItem(AUTOSAVE_SETTING_KEY, String(autosaveEnabled));
+  }, [autosaveEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void loadResumeDraft()
+      .then((savedDraft) => {
+        if (cancelled) return;
+        setDraft(savedDraft);
+        setLastDraftSavedAt(savedDraft?.savedAt ?? null);
+        setDraftStatus("ready");
+      })
+      .catch(() => {
+        if (!cancelled) setDraftStatus("unavailable");
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    if (!resume || !autosaveEnabled || draftStatus === "unavailable") return;
+    const saveTimer = window.setTimeout(() => {
+      const fileName = `${sanitizeFileName(resume.personal.fullName)}-resume.md`;
+      void saveResumeDraft(serializeResumeMarkdown(resume), fileName)
+        .then((savedDraft) => {
+          setDraft(savedDraft);
+          setLastDraftSavedAt(savedDraft.savedAt);
+          setDraftStatus("ready");
+        })
+        .catch(() => setDraftStatus("unavailable"));
+    }, 800);
+    return () => window.clearTimeout(saveTimer);
+  }, [autosaveEnabled, draftStatus, resume]);
 
   useEffect(() => {
     updateFolioBrowserBranding(workspace.accentColor);
@@ -297,7 +381,7 @@ export function App() {
   }, [resumeIsOpen]);
 
   useEffect(() => {
-    if (!resumeIsOpen || showHomeDialog || showCloseReminderDialog || sectionPendingDeletion) {
+    if (!resumeIsOpen || showHomeDialog || showCloseReminderDialog || showExportDialog || sectionPendingDeletion) {
       return;
     }
 
@@ -326,9 +410,41 @@ export function App() {
     resumeIsOpen,
     sectionPendingDeletion,
     showCloseReminderDialog,
+    showExportDialog,
     showHomeDialog,
     undoResume,
   ]);
+
+  useEffect(() => {
+    const hasDialog = showHomeDialog || showCloseReminderDialog || showExportDialog || Boolean(sectionPendingDeletion);
+    if (!hasDialog) return;
+    const previouslyFocused = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    if (!dialog) return;
+
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => !element.hasAttribute("hidden"));
+      const first = focusable[0];
+      const last = focusable.at(-1);
+      if (!first || !last) return;
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    dialog.addEventListener("keydown", trapFocus);
+    return () => {
+      dialog.removeEventListener("keydown", trapFocus);
+      previouslyFocused?.focus();
+    };
+  }, [sectionPendingDeletion, showCloseReminderDialog, showExportDialog, showHomeDialog]);
 
   const updateResume = (
     update: (current: ResumeDocument) => ResumeDocument,
@@ -409,6 +525,28 @@ export function App() {
           workspace={workspace}
           onWorkspaceChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
           busy={busy}
+          draft={draft}
+          draftStatus={draftStatus}
+          autosaveEnabled={autosaveEnabled}
+          onAutosaveChange={setAutosaveEnabled}
+          onRestoreDraft={() => {
+            if (!draft) return;
+            const result = parseResumeMarkdown(draft.markdown, draft.fileName);
+            markdownIsCurrentRef.current = false;
+            loadResume(result.resume);
+            setWarnings(result.warnings);
+            setMessage("Local draft restored.");
+            setDesktopPaneLayout("both");
+          }}
+          onDeleteDraft={() => {
+            void deleteResumeDraft()
+              .then(() => {
+                setDraft(null);
+                setLastDraftSavedAt(null);
+                setMessage("Local draft deleted.");
+              })
+              .catch(() => setMessage("The local draft could not be deleted."));
+          }}
         />
       </div>
     );
@@ -498,6 +636,26 @@ export function App() {
     }));
   };
 
+  const moveItem = (sectionId: string, itemId: string, direction: -1 | 1) => {
+    updateResume((current) => ({
+      ...current,
+      sections: current.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const itemIndex = section.items.findIndex((item) => item.id === itemId);
+        const targetIndex = itemIndex + direction;
+        if (itemIndex < 0 || targetIndex < 0 || targetIndex >= section.items.length) return section;
+        const items = [...section.items];
+        const item = items[itemIndex];
+        const target = items[targetIndex];
+        if (!item || !target) return section;
+        items[itemIndex] = target;
+        items[targetIndex] = item;
+        return { ...section, items };
+      }),
+    }));
+    setMessage("Entry order updated.");
+  };
+
   const selectSectionFromPreview = (sectionId: string) => {
     setActiveTab("content");
     setMobileView("editor");
@@ -557,7 +715,7 @@ export function App() {
   };
 
   const downloadPdf = async () => {
-    setExportingPdf(true);
+    setExportingFormat("pdf");
     setMessage("Preparing selectable-text PDF…");
     try {
       const { exportResumeToPdf } = await import("../features/export/pdf/exportResumeToPdf");
@@ -567,7 +725,45 @@ export function App() {
     } catch {
       setMessage("The PDF export could not be completed. Please try again.");
     } finally {
-      setExportingPdf(false);
+      setExportingFormat(null);
+    }
+  };
+
+  const downloadDocx = async () => {
+    setExportingFormat("docx");
+    setMessage("Preparing editable Word document…");
+    try {
+      const { exportResumeToDocx } = await import("../features/export/docx/exportResumeToDocx");
+      const base = sanitizeFileName(resume.personal.fullName);
+      await exportResumeToDocx(resume, `${base}-resume.docx`);
+      setMessage("Editable ATS-friendly Word resume downloaded.");
+      setShowExportDialog(false);
+    } catch {
+      setMessage("The Word export could not be completed. Please try again.");
+    } finally {
+      setExportingFormat(null);
+    }
+  };
+
+  const downloadImages = async (format: "png" | "jpeg") => {
+    setExportingFormat(format);
+    setMessage(`Preparing ${format === "png" ? "PNG" : "JPEG"} resume pages…`);
+    try {
+      // Image export captures the paginated preview, including all pages.
+      setDesktopPaneLayout("both");
+      setMobileView("preview");
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => resolve());
+      }));
+      const { exportResumeImages } = await import("../features/export/image/exportResumeImages");
+      const base = sanitizeFileName(resume.personal.fullName);
+      const pageCount = await exportResumeImages(`${base}-resume`, format);
+      setMessage(`${pageCount} ${format === "png" ? "PNG" : "JPEG"} resume ${pageCount === 1 ? "page" : "pages"} downloaded.`);
+      setShowExportDialog(false);
+    } catch {
+      setMessage(`The ${format === "png" ? "PNG" : "JPEG"} export could not be completed. Please try again.`);
+    } finally {
+      setExportingFormat(null);
     }
   };
 
@@ -590,6 +786,7 @@ export function App() {
     "--ui-letter-spacing": `${workspace.letterSpacing}px`,
     "--ui-line-height": workspace.lineHeight,
   } as CSSProperties;
+  const SelectedTemplate = TEMPLATE_REGISTRY[resume.design.templateId].component;
 
   return (
     <div
@@ -770,6 +967,73 @@ export function App() {
           </section>
         </div>
       )}
+      {showExportDialog && (
+        <div
+          className="dialog-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget && !exportingFormat) setShowExportDialog(false);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === "Escape" && !exportingFormat) setShowExportDialog(false);
+          }}
+        >
+          <section
+            className="confirm-dialog export-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="export-resume-title"
+            aria-describedby="export-resume-description"
+          >
+            <div className="confirm-dialog-brand" aria-hidden="true">
+              <span className="brand-mark">F</span>
+            </div>
+            <p className="eyebrow">Export resume</p>
+            <h2 id="export-resume-title">Choose a file format</h2>
+            <p id="export-resume-description">
+              PDF and DOCX keep real selectable text. PNG and JPEG create one image for every preview page.
+            </p>
+            <div className="export-options">
+              <button type="button" onClick={() => void downloadPdf()} disabled={Boolean(exportingFormat)}>
+                <strong>ATS PDF</strong><span>Selectable text and automatic pagination</span>
+              </button>
+              <button type="button" onClick={() => void downloadDocx()} disabled={Boolean(exportingFormat)}>
+                <strong>Word DOCX</strong><span>Editable selected template, headings, bullets, and links</span>
+              </button>
+              <button type="button" onClick={() => void downloadImages("png")} disabled={Boolean(exportingFormat)}>
+                <strong>PNG pages</strong><span>High-resolution copies; multiple pages use ZIP</span>
+              </button>
+              <button type="button" onClick={() => void downloadImages("jpeg")} disabled={Boolean(exportingFormat)}>
+                <strong>JPEG pages</strong><span>Smaller copies; multiple pages use ZIP</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  downloadResume();
+                  setShowExportDialog(false);
+                }}
+                disabled={Boolean(exportingFormat)}
+              >
+                <strong>Markdown</strong><span>Portable source file for future editing</span>
+              </button>
+            </div>
+            <p className="export-image-note">
+              For job applications and ATS systems, use PDF or DOCX. Image files are intended for visual sharing.
+            </p>
+            <div className="confirm-dialog-actions">
+              <button
+                className="secondary-button"
+                type="button"
+                autoFocus
+                disabled={Boolean(exportingFormat)}
+                onClick={() => setShowExportDialog(false)}
+              >
+                Close
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
       <header className="app-header">
         <button
           className="brand brand-button"
@@ -780,7 +1044,17 @@ export function App() {
         </button>
         <div className="document-title">
           <strong>{resume.personal.fullName || "Untitled resume"}</strong>
-          <span>Saved only in this browser session</span>
+          <button
+            className="save-status-button"
+            type="button"
+            aria-pressed={autosaveEnabled}
+            title="Toggle browser-local autosave"
+            onClick={() => setAutosaveEnabled((enabled) => !enabled)}
+          >
+            {autosaveEnabled
+              ? lastDraftSavedAt ? "Draft saved locally" : "Saving local draft…"
+              : "Autosave off · current session only"}
+          </button>
         </div>
         <div className="header-actions">
           <div className="history-controls" aria-label="Edit history">
@@ -857,10 +1131,9 @@ export function App() {
           <button
             className="primary-button compact-button"
             type="button"
-            onClick={() => void downloadPdf()}
-            disabled={exportingPdf}
+            onClick={() => setShowExportDialog(true)}
           >
-            {exportingPdf ? "Creating PDF…" : "Download PDF"}
+            <FontAwesomeIcon icon={faDownload} aria-hidden="true" /> Export
           </button>
         </div>
       </header>
@@ -946,6 +1219,7 @@ export function App() {
                     ),
                   }))
                 }
+                onMoveItem={moveItem}
                 onMoveSection={moveSection}
                 onDuplicateSection={copySection}
                 onDeleteSection={deleteSection}
@@ -960,6 +1234,16 @@ export function App() {
               <Suspense fallback={<div className="editor-card">Loading design controls…</div>}>
                 <DesignPanel
                   design={resume.design}
+                  photo={resume.personal.photo}
+                  onPhotoChange={(photo) =>
+                    updateResume(
+                      (current) => ({
+                        ...current,
+                        personal: { ...current.personal, photo },
+                      }),
+                      "personal:photo",
+                    )
+                  }
                   onDesignChange={(patch: Partial<ResumeDesignSettings>) => {
                     const changedFields = Object.keys(patch).sort().join("+") || "design";
                     updateResume(
@@ -985,7 +1269,7 @@ export function App() {
           </div>
           <div className="preview-scroll">
             <Suspense fallback={<div className="preview-loading">Preparing preview…</div>}>
-              <ClassicTemplate
+              <SelectedTemplate
                 resume={resume}
                 onSectionReorder={reorderSectionsFromPreview}
                 onItemReorder={reorderItemsFromPreview}

@@ -27,6 +27,7 @@ interface ResumeEditorProps {
   ) => void;
   onAddItem: (sectionId: string) => void;
   onDeleteItem: (sectionId: string, itemId: string) => void;
+  onMoveItem: (sectionId: string, itemId: string, direction: -1 | 1) => void;
   onMoveSection: (sectionId: string, direction: -1 | 1) => void;
   onDuplicateSection: (sectionId: string) => void;
   onDeleteSection: (sectionId: string) => void;
@@ -63,11 +64,17 @@ function EntryEditor({
   simple,
   onChange,
   onDelete,
+  onMove,
+  isFirst,
+  isLast,
 }: {
   item: ResumeSectionItem;
   simple: boolean;
   onChange: (patch: Partial<ResumeSectionItem>) => void;
   onDelete: () => void;
+  onMove: (direction: -1 | 1) => void;
+  isFirst: boolean;
+  isLast: boolean;
 }) {
   const [bulletDraft, setBulletDraft] = useState(() => item.bullets.join("\n"));
 
@@ -82,9 +89,11 @@ function EntryEditor({
           value={item.title}
           onChange={(event) => onChange({ title: event.target.value })}
         />
-        <button className="icon-button danger" type="button" onClick={onDelete} aria-label="Delete item">
-          ×
-        </button>
+        <span className="inline-entry-actions">
+          <button className="icon-button" type="button" disabled={isFirst} onClick={() => onMove(-1)} aria-label={`Move ${item.title || "item"} up`}>↑</button>
+          <button className="icon-button" type="button" disabled={isLast} onClick={() => onMove(1)} aria-label={`Move ${item.title || "item"} down`}>↓</button>
+          <button className="icon-button danger" type="button" onClick={onDelete} aria-label="Delete item">×</button>
+        </span>
       </div>
     );
   }
@@ -132,9 +141,11 @@ function EntryEditor({
           }}
         />
       </label>
-      <button className="text-button danger" type="button" onClick={onDelete}>
-        Delete entry
-      </button>
+      <div className="entry-actions">
+        <button className="text-button" type="button" disabled={isFirst} onClick={() => onMove(-1)}>Move up</button>
+        <button className="text-button" type="button" disabled={isLast} onClick={() => onMove(1)}>Move down</button>
+        <button className="text-button danger" type="button" onClick={onDelete}>Delete entry</button>
+      </div>
     </fieldset>
   );
 }
@@ -149,6 +160,7 @@ export function ResumeEditor({
   onItemChange,
   onAddItem,
   onDeleteItem,
+  onMoveItem,
   onMoveSection,
   onDuplicateSection,
   onDeleteSection,
@@ -278,13 +290,16 @@ export function ResumeEditor({
               </label>
             ) : (
               <div className="entry-list">
-                {section.items.map((item) => (
+                {section.items.map((item, itemIndex) => (
                   <EntryEditor
                     key={item.id}
                     item={item}
                     simple={simple}
                     onChange={(patch) => onItemChange(section.id, item.id, patch)}
                     onDelete={() => onDeleteItem(section.id, item.id)}
+                    onMove={(direction) => onMoveItem(section.id, item.id, direction)}
+                    isFirst={itemIndex === 0}
+                    isLast={itemIndex === section.items.length - 1}
                   />
                 ))}
                 <button className="secondary-button full-width" type="button" onClick={() => onAddItem(section.id)}>

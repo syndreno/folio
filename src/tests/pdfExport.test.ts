@@ -8,6 +8,7 @@ import { buildResumePdfBlob } from "../features/export/pdf/exportResumeToPdf";
 describe("ATS PDF export", () => {
   it("creates selectable text across two or more pages without dropping content", async () => {
     const resume = createBlankResume();
+    resume.design.templateId = "modern";
     resume.personal.fullName = "Jordan Lee";
     resume.personal.professionalTitle = "Principal Platform Engineer";
     const experience = resume.sections.find((section) => section.type === "experience");

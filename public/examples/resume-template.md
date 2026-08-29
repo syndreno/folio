@@ -8,6 +8,7 @@ location: "City, Country"
 website: ""
 linkedin: ""
 github: ""
+# Supported values: classic, modern, professional
 template: "classic"
 accent_color: "#1F4E79"
 paper_color: "#FFFFFF"
@@ -17,8 +18,18 @@ heading_font_family: "Georgia"
 font_size: 10.5
 bullet_size: 8
 line_height: 1.25
+letter_spacing: 0
+section_spacing: 15
+entry_spacing: 7
+page_margin: 18
+heading_size: 10
 page_size: "A4"
 photo: ""
+show_photo: false
+photo_shape: "circle"
+photo_zoom: 1
+photo_position_x: 50
+photo_position_y: 50
 show_contact_icons: true
 # Choose supported Free icons from https://fontawesome.com/search?ic=free
 contact_icons:

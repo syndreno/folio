@@ -18,6 +18,12 @@ The file has two parts:
 
 The front matter stores portable settings such as the format version, personal details, selected template, resume page colors (`accent_color`, `paper_color`, and `text_color`), body and heading fonts, bullet size, section order, and hidden sections. Temporary interface state—including website appearance—is not stored there.
 
+## Templates
+
+Set `template` to `classic`, `modern`, or `professional`. Classic and Modern are ATS optimized. Professional is single-column and ATS compatible, with an optional profile photo. All templates support A4 and Letter pages. The selected template is restored during import without changing resume content. Unsupported template IDs fall back to Classic ATS with a non-blocking warning.
+
+Portable layout settings include `letter_spacing`, `section_spacing`, `entry_spacing`, `page_margin`, and `heading_size`. The editor constrains these values to professional, readable ranges.
+
 ## Heading rules
 
 - A single `#` starts a resume section, such as `# Experience`.
@@ -40,7 +46,18 @@ Future format changes must use explicit migrations. Importing a file from a newe
 
 ## Photos
 
-The `photo` field is empty by default. Photo binary data is stored locally by the application and is not silently embedded in Markdown. A future explicit portable-photo option may use a size-limited embedded data URL or downloadable package.
+The `photo` field is empty by default. When a user selects a JPEG, PNG, or WebP photo, it is stored as a size-limited local `data:image/...` URL so it survives Markdown download and re-upload without contacting an external server. External photo URLs and SVG files are rejected. Photo presentation is stored separately:
+
+```yaml
+photo: "data:image/webp;base64,..."
+show_photo: true
+photo_shape: "circle" # square, rounded, or circle
+photo_zoom: 1
+photo_position_x: 50
+photo_position_y: 50
+```
+
+Only the Professional template displays the photo. Classic and Modern keep it in the resume source but hide it, so switching templates never deletes the user's image.
 
 ## Contact icons
 

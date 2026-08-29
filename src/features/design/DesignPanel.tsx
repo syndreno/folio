@@ -7,10 +7,14 @@ import {
 import type { ResumeDesignSettings } from "../../domain/resume.types";
 import { contrastRatio } from "../../utils/color";
 import { ContactIconControls } from "./ContactIconControls";
+import { TEMPLATE_DEFINITIONS } from "../templates/registry";
+import { PhotoControls } from "../photo/PhotoControls";
 
 interface DesignPanelProps {
   design: ResumeDesignSettings;
   onDesignChange: (patch: Partial<ResumeDesignSettings>) => void;
+  photo: string;
+  onPhotoChange: (photo: string) => void;
 }
 
 const COLOR_PRESETS = ["#1F4E79", "#2F6FED", "#176B55", "#6C4AB6", "#8A3B2E", "#333333"];
@@ -48,6 +52,8 @@ function ColorControl({
 export function DesignPanel({
   design,
   onDesignChange,
+  photo,
+  onPhotoChange,
 }: DesignPanelProps) {
   const textContrast = contrastRatio(design.textColor, design.paperColor);
   const accentContrast = contrastRatio(design.accentColor, design.paperColor);
@@ -60,6 +66,43 @@ export function DesignPanel({
         <p className="supporting-copy">
           These choices are saved in your Markdown file and restored when you upload it again.
         </p>
+
+        <div className="template-picker">
+          <div className="design-subheading">
+            <h3>Template</h3>
+            <span>All current templates use an ATS-safe single column.</span>
+          </div>
+          <div className="template-grid" role="radiogroup" aria-label="Resume template">
+            {TEMPLATE_DEFINITIONS.map((template) => (
+              <button
+                className={
+                  template.id === design.templateId ? "template-card selected" : "template-card"
+                }
+                type="button"
+                role="radio"
+                aria-checked={template.id === design.templateId}
+                key={template.id}
+                onClick={() => onDesignChange({ templateId: template.id })}
+              >
+                <span className={`template-miniature template-miniature-${template.id}`} aria-hidden="true">
+                  <i /><i /><i /><i />
+                </span>
+                <span className="template-card-copy">
+                  <strong>{template.name}</strong>
+                  <small>{template.description}</small>
+                  <em>{template.atsRating === "optimized" ? "ATS optimized" : "ATS compatible"}</em>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <PhotoControls
+          photo={photo}
+          design={design}
+          onPhotoChange={onPhotoChange}
+          onDesignChange={onDesignChange}
+        />
 
         <div className="design-group">
           <ColorControl
@@ -167,6 +210,33 @@ export function DesignPanel({
               onChange={(event) => onDesignChange({ lineHeight: Number(event.target.value) })}
             />
           </label>
+          <label>
+            Letter spacing <output>{design.letterSpacing.toFixed(2)} pt</output>
+            <input
+              type="range"
+              min="-0.2"
+              max="1"
+              step="0.05"
+              value={design.letterSpacing}
+              onChange={(event) => onDesignChange({ letterSpacing: Number(event.target.value) })}
+            />
+          </label>
+          <label>
+            Heading size <output>{design.headingSize} pt</output>
+            <input type="range" min="9" max="16" step="0.5" value={design.headingSize} onChange={(event) => onDesignChange({ headingSize: Number(event.target.value) })} />
+          </label>
+          <label>
+            Section spacing <output>{design.sectionSpacing} pt</output>
+            <input type="range" min="8" max="28" step="1" value={design.sectionSpacing} onChange={(event) => onDesignChange({ sectionSpacing: Number(event.target.value) })} />
+          </label>
+          <label>
+            Entry spacing <output>{design.entrySpacing} pt</output>
+            <input type="range" min="2" max="16" step="1" value={design.entrySpacing} onChange={(event) => onDesignChange({ entrySpacing: Number(event.target.value) })} />
+          </label>
+          <label>
+            Page margin <output>{design.pageMargin} mm</output>
+            <input type="range" min="8" max="25" step="1" value={design.pageMargin} onChange={(event) => onDesignChange({ pageMargin: Number(event.target.value) })} />
+          </label>
         </div>
         <ContactIconControls
           showContactIcons={design.showContactIcons}
@@ -187,7 +257,17 @@ export function DesignPanel({
               fontSize: 10.5,
               bulletSize: 8,
               lineHeight: 1.25,
+              letterSpacing: 0,
+              sectionSpacing: 15,
+              entrySpacing: 7,
+              pageMargin: 18,
+              headingSize: 10,
               showContactIcons: true,
+              showPhoto: false,
+              photoShape: "circle",
+              photoZoom: 1,
+              photoPositionX: 50,
+              photoPositionY: 50,
             })
           }
         >

@@ -16,6 +16,7 @@ import type {
   ResumeSection,
   ResumeSectionItem,
 } from "../../domain/resume.types";
+import { isResumeTemplateId } from "../../domain/resume.types";
 
 const FRONT_MATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/;
 const HTML_COMMENT_PATTERN = /<!--[\s\S]*?-->/g;
@@ -41,7 +42,17 @@ const KNOWN_FRONT_MATTER_KEYS = new Set([
   "font_size",
   "bullet_size",
   "line_height",
+  "letter_spacing",
+  "section_spacing",
+  "entry_spacing",
+  "page_margin",
+  "heading_size",
   "page_size",
+  "show_photo",
+  "photo_shape",
+  "photo_zoom",
+  "photo_position_x",
+  "photo_position_y",
   "section_order",
   "hidden_sections",
   "show_contact_icons",
@@ -68,6 +79,14 @@ function toColorValue(record: Record<string, unknown>, key: string, fallback: st
   return typeof value === "string" && /^#[0-9A-Fa-f]{6}$/.test(value)
     ? value.toUpperCase()
     : fallback;
+}
+
+function toPhotoValue(record: Record<string, unknown>, warnings: string[]): string {
+  const value = toStringValue(record, "photo", "").trim();
+  if (!value) return "";
+  if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=\r\n]+$/i.test(value)) return value;
+  warnings.push("The profile photo was not a supported local JPG, PNG, or WebP image and was not loaded.");
+  return "";
 }
 
 function parseFrontMatter(markdown: string, warnings: string[]) {
@@ -354,6 +373,15 @@ export function parseResumeMarkdown(markdown: string, fileName?: string): Import
   if (headingFontCandidate !== headingFontFamily) {
     warnings.push(`The heading font “${headingFontCandidate}” is not supported, so Georgia was selected.`);
   }
+  const templateCandidate = toStringValue(data, "template", defaults.design.templateId);
+  const templateId = isResumeTemplateId(templateCandidate)
+    ? templateCandidate
+    : defaults.design.templateId;
+  if (templateCandidate !== templateId) {
+    warnings.push(
+      `The template “${templateCandidate}” is not available, so Classic ATS was selected.`,
+    );
+  }
 
   const extraFrontMatter = Object.fromEntries(
     Object.entries(data).filter(([key]) => !KNOWN_FRONT_MATTER_KEYS.has(key)),
@@ -389,12 +417,12 @@ export function parseResumeMarkdown(markdown: string, fileName?: string): Import
       website: toStringValue(data, "website", ""),
       linkedin: toStringValue(data, "linkedin", ""),
       github: toStringValue(data, "github", ""),
-      photo: toStringValue(data, "photo", ""),
+      photo: toPhotoValue(data, warnings),
       customLinks: parseCustomLinks(data, warnings),
     },
     sections: sections.length > 0 ? sections : defaults.sections,
     design: {
-      templateId: "classic",
+      templateId,
       accentColor: toColorValue(data, "accent_color", defaults.design.accentColor),
       paperColor: toColorValue(data, "paper_color", defaults.design.paperColor),
       textColor: toColorValue(data, "text_color", defaults.design.textColor),
@@ -406,7 +434,20 @@ export function parseResumeMarkdown(markdown: string, fileName?: string): Import
         1.6,
         Math.max(1.1, toNumberValue(data, "line_height", defaults.design.lineHeight)),
       ),
+      letterSpacing: Math.min(1, Math.max(-0.2, toNumberValue(data, "letter_spacing", defaults.design.letterSpacing))),
+      sectionSpacing: Math.min(28, Math.max(8, toNumberValue(data, "section_spacing", defaults.design.sectionSpacing))),
+      entrySpacing: Math.min(16, Math.max(2, toNumberValue(data, "entry_spacing", defaults.design.entrySpacing))),
+      pageMargin: Math.min(25, Math.max(8, toNumberValue(data, "page_margin", defaults.design.pageMargin))),
+      headingSize: Math.min(16, Math.max(9, toNumberValue(data, "heading_size", defaults.design.headingSize))),
       pageSize: data.page_size === "LETTER" ? "LETTER" : "A4",
+      showPhoto: typeof data.show_photo === "boolean" ? data.show_photo : defaults.design.showPhoto,
+      photoShape:
+        data.photo_shape === "square" || data.photo_shape === "rounded" || data.photo_shape === "circle"
+          ? data.photo_shape
+          : defaults.design.photoShape,
+      photoZoom: Math.min(2, Math.max(1, toNumberValue(data, "photo_zoom", defaults.design.photoZoom))),
+      photoPositionX: Math.min(100, Math.max(0, toNumberValue(data, "photo_position_x", defaults.design.photoPositionX))),
+      photoPositionY: Math.min(100, Math.max(0, toNumberValue(data, "photo_position_y", defaults.design.photoPositionY))),
       showContactIcons:
         typeof data.show_contact_icons === "boolean"
           ? data.show_contact_icons

@@ -2,7 +2,7 @@
 
 Folio provides an advisory ATS Readiness score. It cannot predict a specific employer's parser, ranking rules, recruiter decisions, or interview outcomes.
 
-The score is a weighted summary of 34 checks. A failed check never blocks editing or export.
+The score is a weighted summary of 35 checks. A failed check never blocks editing or export.
 
 ## Contact
 
@@ -57,5 +57,6 @@ Dates can be detected in structured metadata and, for imported Markdown, in entr
 - No rasterized body text
 - Automatic multi-page pagination
 - No tables, floating text boxes, or complex columns for critical content
+- Editable DOCX text with heading styles, bullets, and hyperlinks
 
-PDF behavior also has an automated extraction test that creates a multi-page fixture and checks that text from the first and final entries remains extractable.
+PDF behavior has an automated extraction test that creates a multi-page fixture and checks that text from the first and final entries remains extractable. DOCX behavior is verified by inspecting the generated Office Open XML for readable text, headings, bullets, and link relationships.

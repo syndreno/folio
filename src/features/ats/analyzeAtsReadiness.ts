@@ -3,6 +3,7 @@ import { ATS_SAFE_FONTS } from "../../domain/resume.defaults";
 import { emailSchema, safeWebUrlSchema } from "../../domain/resume.schema";
 import type { ResumeDocument, ResumeSectionItem } from "../../domain/resume.types";
 import { contrastRatio } from "../../utils/color";
+import { TEMPLATE_REGISTRY } from "../templates/registry";
 
 export type AtsCategory = "Contact" | "Sections" | "Content" | "Dates" | "Design" | "Export";
 
@@ -145,6 +146,7 @@ function hasUnsupportedSymbols(text: string): boolean {
 }
 
 export function analyzeAtsReadiness(resume: ResumeDocument): AtsAnalysis {
+  const selectedTemplate = TEMPLATE_REGISTRY[resume.design.templateId];
   const visibleSections = resume.sections.filter((section) => section.visible);
   const visibleTypes = new Set(visibleSections.map((section) => section.type));
   const experience = visibleSections.find((section) => section.type === "experience");
@@ -222,8 +224,8 @@ export function analyzeAtsReadiness(resume: ResumeDocument): AtsAnalysis {
     createFinding("Design", "design.font-family", ATS_SAFE_FONTS.includes(resume.design.fontFamily as (typeof ATS_SAFE_FONTS)[number]), "ATS-safe body font", "The selected body font is broadly compatible.", "Choose Arial, Calibri, Helvetica, Georgia, Times New Roman, or Verdana.", 3),
     createFinding("Design", "design.line-height", resume.design.lineHeight >= 1.15 && resume.design.lineHeight <= 1.5, "Readable line spacing", "Line spacing is within a readable range.", "Use line spacing between 1.15 and 1.5 for compact readability.", 2),
     createFinding("Design", "design.contrast", contrastRatio(resume.design.textColor, resume.design.paperColor) >= 4.5, "Text contrast", "Body text and page colors meet the recommended contrast ratio.", "Choose a darker text color or lighter page color.", 4),
-    createFinding("Design", "design.single-column", resume.design.templateId === "classic", "Single-column layout", "The Classic template preserves a logical single-column reading order.", "Use an ATS-focused single-column template.", 6),
-    createFinding("Design", "design.photo", !resume.personal.photo, "No ATS-critical photo", "The ATS layout does not depend on a profile photo.", "Consider disabling the photo for ATS submissions; requirements vary by country and employer.", 2),
+    createFinding("Design", "design.single-column", !selectedTemplate.supportsTwoColumns, "Single-column layout", `The ${selectedTemplate.name} template preserves a logical single-column reading order.`, "Use an ATS-focused single-column template.", 6),
+    createFinding("Design", "design.photo", !resume.design.showPhoto || !resume.personal.photo, "No ATS-critical photo", "The ATS layout does not depend on a visible profile photo.", "Consider disabling the photo for ATS submissions; requirements vary by country and employer.", 2),
     createFinding("Design", "design.page-length", estimatedPages <= 2, "Resume length guidance", `The resume is estimated at ${estimatedPages} ${estimatedPages === 1 ? "page" : "pages"}.`, `The resume is estimated at ${estimatedPages} pages. Review relevance or use more compact spacing if appropriate.`, 3),
     createFinding("Design", "design.supported-symbols", !hasUnsupportedSymbols(resumeText), "Supported characters", "No emoji, private-use glyphs, or replacement characters were detected.", "Replace emoji, private-use icons, or replacement characters with ordinary text.", 3),
 

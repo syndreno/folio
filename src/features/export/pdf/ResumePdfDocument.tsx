@@ -1,5 +1,6 @@
 import {
   Document,
+  Image,
   Link,
   Page,
   StyleSheet,
@@ -133,13 +134,15 @@ function PdfEntry({
   item,
   accentColor,
   bulletSize,
+  entrySpacing,
 }: {
   item: ResumeSectionItem;
   accentColor: string;
   bulletSize: number;
+  entrySpacing: number;
 }) {
   return (
-    <View style={styles.entry}>
+    <View style={[styles.entry, { marginTop: entrySpacing }]}>
       <View style={styles.entryHeading} minPresenceAhead={20}>
         <Text style={styles.entryTitle}>{item.title}</Text>
         {item.meta && <Text style={styles.entryMeta}>{item.meta}</Text>}
@@ -159,6 +162,10 @@ function PdfEntry({
 export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
   const bodyFont = pdfFontFamily(resume.design.fontFamily);
   const headingFont = pdfFontFamily(resume.design.headingFontFamily);
+  const modernTemplate = resume.design.templateId === "modern";
+  const professionalTemplate = resume.design.templateId === "professional";
+  const showPhoto = professionalTemplate && resume.design.showPhoto && Boolean(resume.personal.photo);
+  const pageMarginPoints = resume.design.pageMargin * 2.83465;
   const sections = [...resume.sections]
     .filter((section) => section.visible)
     .sort((first, second) => first.order - second.order);
@@ -188,17 +195,53 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
         style={[
           styles.page,
           {
+            paddingTop: pageMarginPoints,
+            paddingRight: pageMarginPoints,
+            paddingBottom: pageMarginPoints,
+            paddingLeft: pageMarginPoints,
             backgroundColor: resume.design.paperColor,
             color: resume.design.textColor,
             fontFamily: bodyFont,
             fontSize: resume.design.fontSize,
             lineHeight: resume.design.lineHeight,
+            letterSpacing: resume.design.letterSpacing,
           },
         ]}
       >
-        <View style={[styles.header, { borderBottomColor: resume.design.accentColor }]}>
-          <Text style={[styles.name, { fontFamily: headingFont }]}>{resume.personal.fullName}</Text>
-          <Text style={[styles.role, { color: resume.design.accentColor }]}>
+        <View
+          style={[
+            styles.header,
+            modernTemplate
+              ? {
+                  paddingLeft: 10,
+                  borderBottomWidth: 0,
+                  borderLeftWidth: 3,
+                  borderLeftColor: resume.design.accentColor,
+                }
+              : {
+                  paddingRight: showPhoto ? 88 : 0,
+                  borderBottomColor: resume.design.accentColor,
+                },
+          ]}
+        >
+          <Text
+            style={[
+              styles.name,
+              modernTemplate
+                ? { color: resume.design.accentColor, fontFamily: bodyFont, fontWeight: 800 }
+                : { fontFamily: headingFont },
+            ]}
+          >
+            {resume.personal.fullName}
+          </Text>
+          <Text
+            style={[
+              styles.role,
+              modernTemplate
+                ? { color: resume.design.textColor, textTransform: "uppercase" }
+                : { color: resume.design.accentColor },
+            ]}
+          >
             {resume.personal.professionalTitle}
           </Text>
           <View style={styles.contacts}>
@@ -206,6 +249,25 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
               <PdfContact key={`${contact.value}-${index}`} value={contact.value} href={contact.href} />
             ))}
           </View>
+          {showPhoto && (
+            <Image
+              src={resume.personal.photo}
+              style={{
+                position: "absolute",
+                top: 0,
+                right: 0,
+                width: 74,
+                height: 74,
+                objectFit: "cover",
+                borderRadius:
+                  resume.design.photoShape === "circle"
+                    ? 37
+                    : resume.design.photoShape === "rounded"
+                      ? 10
+                      : 0,
+              }}
+            />
+          )}
         </View>
 
         {sections.map((section) => {
@@ -213,15 +275,26 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
             (item) => !item.subtitle && !item.meta && !item.description && item.bullets.length === 0,
           );
           return (
-            <View style={styles.section} key={section.id}>
+            <View style={[styles.section, { marginTop: resume.design.sectionSpacing }]} key={section.id}>
               <Text
                 style={[
                   styles.sectionTitle,
-                  {
-                    borderBottomColor: resume.design.accentColor,
-                    color: resume.design.accentColor,
-                    fontFamily: headingFont,
-                  },
+                  modernTemplate
+                    ? {
+                        paddingLeft: 6,
+                        borderBottomWidth: 0,
+                        borderLeftWidth: 2,
+                        borderLeftColor: resume.design.accentColor,
+                        color: resume.design.accentColor,
+                        fontFamily: bodyFont,
+                        fontSize: resume.design.headingSize,
+                      }
+                    : {
+                        borderBottomColor: resume.design.accentColor,
+                        color: resume.design.accentColor,
+                        fontFamily: headingFont,
+                        fontSize: resume.design.headingSize,
+                      },
                 ]}
                 minPresenceAhead={28}
               >
@@ -248,6 +321,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
                     item={item}
                     accentColor={resume.design.accentColor}
                     bulletSize={resume.design.bulletSize}
+                    entrySpacing={resume.design.entrySpacing}
                   />
                 ))
               )}
