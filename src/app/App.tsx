@@ -8,7 +8,12 @@ import {
   type CSSProperties,
 } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faCaretLeft, faCaretRight } from "@fortawesome/free-solid-svg-icons";
+import {
+  faArrowRotateLeft,
+  faArrowRotateRight,
+  faCaretLeft,
+  faCaretRight,
+} from "@fortawesome/free-solid-svg-icons";
 import {
   createBlankResume,
   createEmptyItem,
@@ -34,6 +39,7 @@ import {
   type WorkspaceSettings,
 } from "../features/design/WorkspaceCustomizer";
 import { ResumeEditor } from "../features/editor/ResumeEditor";
+import { useResumeHistory } from "../features/editor/useResumeHistory";
 import { parseResumeMarkdown } from "../parsers/markdown/parseResumeMarkdown";
 import { serializeResumeMarkdown } from "../serializers/markdown/serializeResumeMarkdown";
 import { downloadTextFile, isAcceptedMarkdownFile, sanitizeFileName } from "../utils/files";
@@ -230,7 +236,15 @@ function StartScreen({
 }
 
 export function App() {
-  const [resume, setResume] = useState<ResumeDocument | null>(null);
+  const {
+    resume,
+    canUndo,
+    canRedo,
+    loadResume,
+    updateResume: updateResumeHistory,
+    undoResume,
+    redoResume,
+  } = useResumeHistory();
   const [activeTab, setActiveTab] = useState<EditorTab>("content");
   const [mobileView, setMobileView] = useState<MobileView>("editor");
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -282,15 +296,52 @@ export function App() {
     return () => window.removeEventListener("beforeunload", warnBeforeLeaving);
   }, [resumeIsOpen]);
 
-  const updateResume = (update: (current: ResumeDocument) => ResumeDocument) => {
+  useEffect(() => {
+    if (!resumeIsOpen || showHomeDialog || showCloseReminderDialog || sectionPendingDeletion) {
+      return;
+    }
+
+    const handleHistoryShortcut = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey) return;
+      const key = event.key.toLocaleLowerCase("en");
+      const wantsRedo = (key === "z" && event.shiftKey) || key === "y";
+      const wantsUndo = key === "z" && !event.shiftKey;
+      if (wantsUndo && canUndo) {
+        event.preventDefault();
+        markdownIsCurrentRef.current = false;
+        undoResume();
+      } else if (wantsRedo && canRedo) {
+        event.preventDefault();
+        markdownIsCurrentRef.current = false;
+        redoResume();
+      }
+    };
+
+    window.addEventListener("keydown", handleHistoryShortcut);
+    return () => window.removeEventListener("keydown", handleHistoryShortcut);
+  }, [
+    canRedo,
+    canUndo,
+    redoResume,
+    resumeIsOpen,
+    sectionPendingDeletion,
+    showCloseReminderDialog,
+    showHomeDialog,
+    undoResume,
+  ]);
+
+  const updateResume = (
+    update: (current: ResumeDocument) => ResumeDocument,
+    groupKey?: string,
+  ) => {
     markdownIsCurrentRef.current = false;
-    setResume((current) => (current ? update(current) : current));
+    updateResumeHistory(update, groupKey);
   };
 
   const importMarkdown = (markdown: string, fileName?: string) => {
     const result = parseResumeMarkdown(markdown, fileName);
     markdownIsCurrentRef.current = false;
-    setResume(result.resume);
+    loadResume(result.resume);
     setWarnings(result.warnings);
     setMessage(fileName ? `${fileName} was imported.` : "Example resume loaded.");
     setDesktopPaneLayout("both");
@@ -349,7 +400,7 @@ export function App() {
         <StartScreen
           onCreate={() => {
             markdownIsCurrentRef.current = false;
-            setResume(createBlankResume());
+            loadResume(createBlankResume());
             setWarnings([]);
             setDesktopPaneLayout("both");
           }}
@@ -367,19 +418,24 @@ export function App() {
     updateResume((current) => ({
       ...current,
       personal: { ...current.personal, [field]: value },
-    }));
+    }), `personal:${field}`);
   };
 
   const updateSection = (sectionId: string, patch: Partial<ResumeSection>) => {
+    const changedField = Object.keys(patch)[0];
+    const groupKey = changedField === "title" || changedField === "content"
+      ? `section:${sectionId}:${changedField}`
+      : undefined;
     updateResume((current) => ({
       ...current,
       sections: current.sections.map((section) =>
         section.id === sectionId ? { ...section, ...patch } : section,
       ),
-    }));
+    }), groupKey);
   };
 
   const updateItem = (sectionId: string, itemId: string, patch: Partial<ResumeSectionItem>) => {
+    const changedField = Object.keys(patch)[0] ?? "item";
     updateResume((current) => ({
       ...current,
       sections: current.sections.map((section) =>
@@ -390,7 +446,7 @@ export function App() {
             }
           : section,
       ),
-    }));
+    }), `item:${sectionId}:${itemId}:${changedField}`);
   };
 
   const moveSection = (sectionId: string, direction: -1 | 1) => {
@@ -597,7 +653,7 @@ export function App() {
                 type="button"
                 onClick={() => {
                   setShowHomeDialog(false);
-                  setResume(null);
+                  loadResume(null);
                   setWarnings([]);
                   setMessage("");
                   setDesktopPaneLayout("both");
@@ -727,6 +783,34 @@ export function App() {
           <span>Saved only in this browser session</span>
         </div>
         <div className="header-actions">
+          <div className="history-controls" aria-label="Edit history">
+            <button
+              className="icon-button"
+              type="button"
+              disabled={!canUndo}
+              aria-label="Undo last change"
+              title="Undo (Ctrl+Z)"
+              onClick={() => {
+                markdownIsCurrentRef.current = false;
+                undoResume();
+              }}
+            >
+              <FontAwesomeIcon icon={faArrowRotateLeft} aria-hidden="true" />
+            </button>
+            <button
+              className="icon-button"
+              type="button"
+              disabled={!canRedo}
+              aria-label="Redo last change"
+              title="Redo (Ctrl+Shift+Z)"
+              onClick={() => {
+                markdownIsCurrentRef.current = false;
+                redoResume();
+              }}
+            >
+              <FontAwesomeIcon icon={faArrowRotateRight} aria-hidden="true" />
+            </button>
+          </div>
           <div className="pane-toggle-controls" aria-label="Workspace panes">
             <button
               className={`icon-button pane-toggle-button ${desktopPaneLayout !== "preview" ? "active" : ""}`}
@@ -831,7 +915,7 @@ export function App() {
                         link.id === linkId ? { ...link, ...patch } : link,
                       ),
                     },
-                  }))
+                  }), `personal-link:${linkId}:${Object.keys(patch)[0] ?? "link"}`)
                 }
                 onPersonalLinkDelete={(linkId: string) =>
                   updateResume((current) => ({
@@ -876,9 +960,13 @@ export function App() {
               <Suspense fallback={<div className="editor-card">Loading design controls…</div>}>
                 <DesignPanel
                   design={resume.design}
-                  onDesignChange={(patch: Partial<ResumeDesignSettings>) =>
-                    updateResume((current) => ({ ...current, design: { ...current.design, ...patch } }))
-                  }
+                  onDesignChange={(patch: Partial<ResumeDesignSettings>) => {
+                    const changedFields = Object.keys(patch).sort().join("+") || "design";
+                    updateResume(
+                      (current) => ({ ...current, design: { ...current.design, ...patch } }),
+                      `design:${changedFields}`,
+                    );
+                  }}
                 />
               </Suspense>
             ) : (

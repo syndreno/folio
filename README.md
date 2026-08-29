@@ -10,6 +10,7 @@ Folio is a privacy-friendly resume builder that keeps Markdown as the portable s
 - Download a commented Markdown starter template.
 - Edit personal details, summaries, list sections, structured entries, and custom sections.
 - Reorder sections and their entries from the editor or live preview; hide, show, and delete sections.
+- Undo and redo content, design, add/delete, and reorder changes from the header or keyboard.
 - See changes in a live A4 or Letter preview.
 - Customize resume accent, page, and text colors with contrast guidance.
 - Choose ATS-safe body and heading fonts, font size, bullet size, and line height.
@@ -17,7 +18,7 @@ Folio is a privacy-friendly resume builder that keeps Markdown as the portable s
 - Use the Folio logo as the favicon and recolor it automatically with the selected website color.
 - Configure contact icons with validated Font Awesome Free URLs in Markdown.
 - Select each contact icon visually and restore those selections through Markdown round-tripping.
-- Add custom personal links with user-defined labels, display text, destinations, and icons.
+- Add custom personal links with user-defined titles, destinations, and visual icon selection.
 - Download a selectable-text ATS PDF with automatic multi-page wrapping.
 - Review a live ATS Readiness score with actionable checks.
 - Export the edited resume back to clean, versioned Markdown.

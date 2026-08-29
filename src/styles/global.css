@@ -200,6 +200,9 @@ a { color: inherit; }
 .document-title { display: flex; flex-direction: column; align-items: center; font-size: 0.85rem; }
 .document-title span { margin-top: 2px; color: var(--muted); font-size: 0.68rem; }
 .header-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.history-controls { display: inline-flex; gap: 4px; }
+.history-controls .icon-button { background: transparent; }
+.history-controls .icon-button:hover:not(:disabled) { color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent), var(--surface) 91%); }
 .pane-toggle-controls { display: inline-flex; padding: 3px; gap: 3px; background: var(--surface-muted); border: 1px solid var(--line); border-radius: 9px; }
 .pane-toggle-button { width: 30px; height: 30px; border: 0; background: transparent; }
 .pane-toggle-button.active { color: white; background: var(--ui-accent); }
