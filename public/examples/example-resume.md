@@ -12,7 +12,7 @@ template: "classic"
 accent_color: "#1F4E79"
 paper_color: "#FFFFFF"
 text_color: "#1F2933"
-font_family: "Arial"
+font_family: "Calibri"
 heading_font_family: "Georgia"
 font_size: 10.5
 bullet_size: 8

@@ -18,6 +18,10 @@ function PersonalLinkHarness() {
 
 describe("additional links editor", () => {
   it("uses a title field and visual icon picker instead of dropdowns", async () => {
+    const { FONT_AWESOME_ICON_OPTIONS } = await import(
+      "../features/icons/fontAwesomeCatalog"
+    );
+    expect(FONT_AWESOME_ICON_OPTIONS.length).toBeGreaterThan(500);
     const container = document.createElement("div");
     document.body.append(container);
     const root = createRoot(container);
@@ -33,8 +37,26 @@ describe("additional links editor", () => {
     const pickerTrigger = container.querySelector<HTMLButtonElement>(
       'button[aria-label="portfolio.example.com icon picker"]',
     );
-    act(() => pickerTrigger?.click());
+    await act(async () => {
+      pickerTrigger?.click();
+      await Promise.resolve();
+    });
     expect(container.querySelector('[role="listbox"]')).not.toBeNull();
+    const searchInput = container.querySelector<HTMLInputElement>(
+      'input[aria-label="Search portfolio.example.com icons"]',
+    );
+    expect(searchInput).not.toBeNull();
+    expect(container.querySelectorAll('[role="option"]').length).toBeGreaterThan(100);
+
+    await act(async () => {
+      const setInputValue = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set;
+      setInputValue?.call(searchInput, "github");
+      searchInput?.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    expect(container.querySelectorAll('[role="option"]').length).toBeLessThan(20);
 
     act(() =>
       container

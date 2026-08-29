@@ -12,24 +12,47 @@ import {
   faPhone,
   faUser,
 } from "@fortawesome/free-solid-svg-icons";
-import { getFontAwesomeIconName, type SupportedFontAwesomeIconName } from "../../constants/contactIcons";
+import {
+  getFontAwesomeIconReference,
+} from "../../constants/contactIcons";
 
-const ICON_REGISTRY: Readonly<Record<SupportedFontAwesomeIconName, IconDefinition>> = {
-  at: faAt,
-  briefcase: faBriefcase,
-  envelope: faEnvelope,
-  github: faGithub,
-  globe: faGlobe,
-  link: faLink,
-  linkedin: faLinkedin,
-  "location-dot": faLocationDot,
-  "map-pin": faMapPin,
-  "mobile-screen-button": faMobileScreenButton,
-  phone: faPhone,
-  user: faUser,
-};
+const ICON_REGISTRY = new Map<string, IconDefinition>([
+  ["solid:at", faAt],
+  ["solid:briefcase", faBriefcase],
+  ["solid:envelope", faEnvelope],
+  ["brands:github", faGithub],
+  ["solid:globe", faGlobe],
+  ["solid:link", faLink],
+  ["brands:linkedin", faLinkedin],
+  ["solid:location-dot", faLocationDot],
+  ["solid:map-pin", faMapPin],
+  ["solid:mobile-screen-button", faMobileScreenButton],
+  ["solid:phone", faPhone],
+  ["solid:user", faUser],
+]);
 
 export function getFontAwesomeIconDefinition(urlValue: string): IconDefinition | undefined {
-  const iconName = getFontAwesomeIconName(urlValue);
-  return iconName ? ICON_REGISTRY[iconName] : undefined;
+  const reference = getFontAwesomeIconReference(urlValue);
+  if (!reference) return undefined;
+  return ICON_REGISTRY.get(`${reference.style}:${reference.iconName}`);
+}
+
+export function registerFontAwesomeIconDefinition(
+  style: "solid" | "brands",
+  definition: IconDefinition,
+): void {
+  ICON_REGISTRY.set(`${style}:${definition.iconName}`, definition);
+}
+
+export async function loadFontAwesomeIconDefinition(
+  urlValue: string,
+): Promise<IconDefinition | undefined> {
+  const availableIcon = getFontAwesomeIconDefinition(urlValue);
+  if (availableIcon) return availableIcon;
+  const reference = getFontAwesomeIconReference(urlValue);
+  if (!reference) return undefined;
+  const { getFontAwesomeCatalogDefinition } = await import("./fontAwesomeCatalog");
+  const definition = getFontAwesomeCatalogDefinition(urlValue);
+  if (definition) registerFontAwesomeIconDefinition(reference.style, definition);
+  return definition;
 }

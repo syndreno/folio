@@ -19,6 +19,27 @@ interface DesignPanelProps {
 
 const COLOR_PRESETS = ["#1F4E79", "#2F6FED", "#176B55", "#6C4AB6", "#8A3B2E", "#333333"];
 
+const TYPOGRAPHY_PRESETS = [
+  {
+    name: "Editorial",
+    description: "Warm serif headings with a clean ATS-safe body.",
+    fontFamily: "Calibri",
+    headingFontFamily: "Georgia",
+  },
+  {
+    name: "Contemporary",
+    description: "A crisp sans-serif hierarchy for modern roles.",
+    fontFamily: "Calibri",
+    headingFontFamily: "Calibri",
+  },
+  {
+    name: "Executive",
+    description: "Traditional, restrained typography for senior profiles.",
+    fontFamily: "Arial",
+    headingFontFamily: "Georgia",
+  },
+] as const;
+
 function ColorControl({
   id,
   label,
@@ -142,6 +163,34 @@ export function DesignPanel({
           )}
         </div>
 
+        <div className="typography-presets">
+          <div className="design-subheading">
+            <h3>Typography presets</h3>
+            <span>Curated ATS-safe pairings</span>
+          </div>
+          <div className="typography-preset-grid">
+            {TYPOGRAPHY_PRESETS.map((preset) => {
+              const selected = design.fontFamily === preset.fontFamily
+                && design.headingFontFamily === preset.headingFontFamily;
+              return (
+                <button
+                  className={selected ? "typography-preset selected" : "typography-preset"}
+                  type="button"
+                  aria-pressed={selected}
+                  key={preset.name}
+                  onClick={() => onDesignChange({
+                    fontFamily: preset.fontFamily,
+                    headingFontFamily: preset.headingFontFamily,
+                  })}
+                >
+                  <strong>{preset.name}</strong>
+                  <span>{preset.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         <div className="field-grid two-columns">
           <label>
             Body font
@@ -252,7 +301,7 @@ export function DesignPanel({
               accentColor: DEFAULT_ACCENT_COLOR,
               paperColor: DEFAULT_PAPER_COLOR,
               textColor: DEFAULT_TEXT_COLOR,
-              fontFamily: "Arial",
+              fontFamily: "Calibri",
               headingFontFamily: "Georgia",
               fontSize: 10.5,
               bulletSize: 8,

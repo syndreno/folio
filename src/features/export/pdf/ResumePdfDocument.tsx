@@ -3,116 +3,94 @@ import {
   Image,
   Link,
   Page,
+  Path,
   StyleSheet,
+  Svg,
   Text,
   View,
 } from "@react-pdf/renderer";
+import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
+import { getFontAwesomeIconDefinition } from "../../icons/fontAwesomeRegistry";
+import { createPdfContactIconData } from "./pdfContactIcon";
+import {
+  createPdfTemplateStyles,
+  MILLIMETRES_TO_POINTS,
+  pdfFontFamily,
+} from "./pdfTemplateStyles";
 
 const styles = StyleSheet.create({
-  page: {
-    paddingTop: 46,
-    paddingRight: 50,
-    paddingBottom: 46,
-    paddingLeft: 50,
-  },
-  header: {
-    paddingBottom: 9,
-    borderBottomWidth: 1.5,
-  },
-  name: {
-    fontSize: 23,
-    lineHeight: 1.08,
-  },
-  role: {
-    marginTop: 3,
-    marginBottom: 6,
-    fontSize: 11,
-    fontWeight: 700,
-  },
+  page: {},
   contacts: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 8,
+    columnGap: 9,
+    rowGap: 2.25,
   },
   contactText: {
-    fontSize: 8.3,
-    color: "#26332F",
+    fontSize: 8.5,
     textDecoration: "none",
   },
-  section: {
-    marginTop: 10,
+  contactItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    textDecoration: "none",
   },
-  sectionTitle: {
-    paddingBottom: 2.5,
-    borderBottomWidth: 0.7,
-    fontSize: 9.5,
-    fontWeight: 700,
-    textTransform: "uppercase",
+  contactIcon: {
+    width: 8,
+    height: 8,
   },
-  summary: {
-    marginTop: 5,
-  },
-  entry: {
-    marginTop: 6,
-  },
+  section: {},
+  summary: { margin: 0 },
+  entry: {},
   entryHeading: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 10,
+    gap: 9,
   },
   entryTitle: {
     flexGrow: 1,
+    fontSize: 10.5,
     fontWeight: 700,
   },
   entryMeta: {
     flexShrink: 0,
-    fontSize: 8.2,
+    fontSize: 8.5,
   },
   subtitle: {
-    marginTop: 1,
+    marginTop: 0.75,
+    marginBottom: 3,
     fontWeight: 700,
   },
   description: {
-    marginTop: 2,
+    marginTop: 2.25,
+    marginBottom: 0,
   },
+  bulletList: { marginTop: 3 },
   bulletRow: {
     flexDirection: "row",
-    marginTop: 2,
-    paddingLeft: 3,
+    marginBottom: 1.5,
+    paddingLeft: 0,
   },
   bulletMarker: {
-    width: 12,
+    width: 12.75,
+    paddingLeft: 1.5,
   },
-  bulletText: {
-    flex: 1,
-  },
+  bulletText: { flex: 1 },
   simpleList: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 4,
-    marginTop: 5,
+    gap: 4.5,
   },
   simpleItem: {
-    paddingTop: 2,
-    paddingRight: 5,
-    paddingBottom: 2,
-    paddingLeft: 5,
-    borderWidth: 0.5,
-    borderRadius: 2,
-  },
-  pageNumber: {
-    position: "absolute",
-    right: 50,
-    bottom: 20,
-    color: "#66716D",
-    fontSize: 7,
+    paddingTop: 2.25,
+    paddingRight: 6,
+    paddingBottom: 2.25,
+    paddingLeft: 6,
+    fontSize: 9,
   },
 });
-
-function pdfFontFamily(fontFamily: string): string {
-  return fontFamily === "Georgia" || fontFamily === "Times New Roman" ? "Times-Roman" : "Helvetica";
-}
 
 function safeWebUrl(value: string): string | undefined {
   try {
@@ -123,11 +101,35 @@ function safeWebUrl(value: string): string | undefined {
   }
 }
 
-function PdfContact({ value, href }: { value: string; href?: string }) {
-  if (href) {
-    return <Link src={href} style={styles.contactText}>{value}</Link>;
-  }
-  return <Text style={styles.contactText}>{value}</Text>;
+function PdfContact({
+  value,
+  href,
+  color,
+  accentColor,
+  icon,
+}: {
+  value: string;
+  href?: string;
+  color: string;
+  accentColor: string;
+  icon?: IconDefinition;
+}) {
+  const iconData = createPdfContactIconData(icon);
+  const content = (
+    <>
+      {iconData && (
+        <Svg viewBox={iconData.viewBox} style={styles.contactIcon}>
+          {iconData.paths.map((path, index) => (
+            <Path d={path} fill={accentColor} key={`${path.slice(0, 24)}-${index}`} />
+          ))}
+        </Svg>
+      )}
+      <Text style={[styles.contactText, { color }]}>{value}</Text>
+    </>
+  );
+
+  if (href) return <Link src={href} style={styles.contactItem}>{content}</Link>;
+  return <View style={styles.contactItem}>{content}</View>;
 }
 
 function PdfEntry({
@@ -135,50 +137,57 @@ function PdfEntry({
   accentColor,
   bulletSize,
   entrySpacing,
+  isFirst,
 }: {
   item: ResumeSectionItem;
   accentColor: string;
   bulletSize: number;
   entrySpacing: number;
+  isFirst: boolean;
 }) {
   return (
-    <View style={[styles.entry, { marginTop: entrySpacing }]}>
+    <View style={[styles.entry, { marginTop: isFirst ? 0 : entrySpacing }]}>
       <View style={styles.entryHeading} minPresenceAhead={20}>
         <Text style={styles.entryTitle}>{item.title}</Text>
         {item.meta && <Text style={styles.entryMeta}>{item.meta}</Text>}
       </View>
       {item.subtitle && <Text style={[styles.subtitle, { color: accentColor }]}>{item.subtitle}</Text>}
       {item.description && <Text style={styles.description}>{item.description}</Text>}
-      {item.bullets.map((bullet, index) => (
-        <View style={styles.bulletRow} key={`${item.id}-${index}`} wrap>
-          <Text style={[styles.bulletMarker, { color: accentColor, fontSize: bulletSize }]}>•</Text>
-          <Text style={styles.bulletText} orphans={2} widows={2}>{bullet}</Text>
+      {item.bullets.length > 0 && (
+        <View style={styles.bulletList}>
+          {item.bullets.map((bullet, index) => (
+            <View style={styles.bulletRow} key={`${item.id}-${index}`} wrap>
+              <Text style={[styles.bulletMarker, { color: accentColor, fontSize: bulletSize }]}>•</Text>
+              <Text style={styles.bulletText} orphans={2} widows={2}>{bullet}</Text>
+            </View>
+          ))}
         </View>
-      ))}
+      )}
     </View>
   );
 }
 
 export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
   const bodyFont = pdfFontFamily(resume.design.fontFamily);
-  const headingFont = pdfFontFamily(resume.design.headingFontFamily);
-  const modernTemplate = resume.design.templateId === "modern";
-  const professionalTemplate = resume.design.templateId === "professional";
-  const showPhoto = professionalTemplate && resume.design.showPhoto && Boolean(resume.personal.photo);
-  const pageMarginPoints = resume.design.pageMargin * 2.83465;
+  const templateStyles = createPdfTemplateStyles(resume);
+  const showPhoto = resume.design.templateId === "professional"
+    && resume.design.showPhoto
+    && /^data:image\/(?:png|jpeg);base64,/i.test(resume.personal.photo);
+  const pageMarginPoints = resume.design.pageMargin * MILLIMETRES_TO_POINTS;
   const sections = [...resume.sections]
     .filter((section) => section.visible)
     .sort((first, second) => first.order - second.order);
   const contacts = [
-    { value: resume.personal.email, href: resume.personal.email ? `mailto:${resume.personal.email}` : undefined },
-    { value: resume.personal.phone, href: undefined },
-    { value: resume.personal.location, href: undefined },
-    { value: resume.personal.website, href: safeWebUrl(resume.personal.website) },
-    { value: resume.personal.linkedin, href: safeWebUrl(resume.personal.linkedin) },
-    { value: resume.personal.github, href: safeWebUrl(resume.personal.github) },
+    { value: resume.personal.email, href: resume.personal.email ? `mailto:${resume.personal.email}` : undefined, iconUrl: resume.design.contactIconUrls.email },
+    { value: resume.personal.phone, href: undefined, iconUrl: resume.design.contactIconUrls.phone },
+    { value: resume.personal.location, href: undefined, iconUrl: resume.design.contactIconUrls.location },
+    { value: resume.personal.website, href: safeWebUrl(resume.personal.website), iconUrl: resume.design.contactIconUrls.website },
+    { value: resume.personal.linkedin, href: safeWebUrl(resume.personal.linkedin), iconUrl: resume.design.contactIconUrls.linkedin },
+    { value: resume.personal.github, href: safeWebUrl(resume.personal.github), iconUrl: resume.design.contactIconUrls.github },
     ...resume.personal.customLinks.map((link) => ({
       value: link.title,
       href: safeWebUrl(link.url),
+      iconUrl: link.iconUrl,
     })),
   ].filter((contact) => contact.value);
 
@@ -208,65 +217,29 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
           },
         ]}
       >
-        <View
-          style={[
-            styles.header,
-            modernTemplate
-              ? {
-                  paddingLeft: 10,
-                  borderBottomWidth: 0,
-                  borderLeftWidth: 3,
-                  borderLeftColor: resume.design.accentColor,
-                }
-              : {
-                  paddingRight: showPhoto ? 88 : 0,
-                  borderBottomColor: resume.design.accentColor,
-                },
-          ]}
-        >
-          <Text
-            style={[
-              styles.name,
-              modernTemplate
-                ? { color: resume.design.accentColor, fontFamily: bodyFont, fontWeight: 800 }
-                : { fontFamily: headingFont },
-            ]}
-          >
-            {resume.personal.fullName}
-          </Text>
-          <Text
-            style={[
-              styles.role,
-              modernTemplate
-                ? { color: resume.design.textColor, textTransform: "uppercase" }
-                : { color: resume.design.accentColor },
-            ]}
-          >
-            {resume.personal.professionalTitle}
-          </Text>
+        <View style={templateStyles.header}>
+          <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
+          <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
           <View style={styles.contacts}>
             {contacts.map((contact, index) => (
-              <PdfContact key={`${contact.value}-${index}`} value={contact.value} href={contact.href} />
+              <PdfContact
+                key={`${contact.value}-${index}`}
+                value={contact.value}
+                href={contact.href}
+                color={resume.design.textColor}
+                accentColor={resume.design.accentColor}
+                icon={
+                  resume.design.showContactIcons
+                    ? getFontAwesomeIconDefinition(contact.iconUrl)
+                    : undefined
+                }
+              />
             ))}
           </View>
           {showPhoto && (
-            <Image
-              src={resume.personal.photo}
-              style={{
-                position: "absolute",
-                top: 0,
-                right: 0,
-                width: 74,
-                height: 74,
-                objectFit: "cover",
-                borderRadius:
-                  resume.design.photoShape === "circle"
-                    ? 37
-                    : resume.design.photoShape === "rounded"
-                      ? 10
-                      : 0,
-              }}
-            />
+            <View style={templateStyles.photoFrame}>
+              <Image src={resume.personal.photo} style={templateStyles.photo} />
+            </View>
           )}
         </View>
 
@@ -276,28 +249,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
           );
           return (
             <View style={[styles.section, { marginTop: resume.design.sectionSpacing }]} key={section.id}>
-              <Text
-                style={[
-                  styles.sectionTitle,
-                  modernTemplate
-                    ? {
-                        paddingLeft: 6,
-                        borderBottomWidth: 0,
-                        borderLeftWidth: 2,
-                        borderLeftColor: resume.design.accentColor,
-                        color: resume.design.accentColor,
-                        fontFamily: bodyFont,
-                        fontSize: resume.design.headingSize,
-                      }
-                    : {
-                        borderBottomColor: resume.design.accentColor,
-                        color: resume.design.accentColor,
-                        fontFamily: headingFont,
-                        fontSize: resume.design.headingSize,
-                      },
-                ]}
-                minPresenceAhead={28}
-              >
+              <Text style={templateStyles.sectionTitle} minPresenceAhead={28}>
                 {section.title}
               </Text>
               {section.content && (
@@ -306,34 +258,26 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
               {simpleItems ? (
                 <View style={styles.simpleList}>
                   {section.items.map((item) => (
-                    <Text
-                      key={item.id}
-                      style={[styles.simpleItem, { borderColor: resume.design.accentColor }]}
-                    >
+                    <Text key={item.id} style={[styles.simpleItem, templateStyles.simpleItem]}>
                       {item.title}
                     </Text>
                   ))}
                 </View>
               ) : (
-                section.items.map((item) => (
+                section.items.map((item, index) => (
                   <PdfEntry
                     key={item.id}
                     item={item}
                     accentColor={resume.design.accentColor}
                     bulletSize={resume.design.bulletSize}
                     entrySpacing={resume.design.entrySpacing}
+                    isFirst={index === 0}
                   />
                 ))
               )}
             </View>
           );
         })}
-
-        <Text
-          fixed
-          style={styles.pageNumber}
-          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
-        />
       </Page>
     </Document>
   );

@@ -8,10 +8,9 @@ import {
   type HTMLAttributes,
 } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
 import type { SectionDropPosition } from "../../../domain/resume.transforms";
-import { getFontAwesomeIconDefinition } from "../../icons/fontAwesomeRegistry";
+import { useFontAwesomeIconDefinition } from "../../icons/useFontAwesomeIconDefinition";
 import { paginatePreviewBlocks } from "./paginatePreviewBlocks";
 import type { ResumeTemplateProps } from "../template.types";
 
@@ -37,16 +36,19 @@ function safeHref(value: string): string | undefined {
 function ContactValue({
   value,
   href,
-  icon,
+  iconUrl,
+  showIcon,
 }: {
   value: string;
   href?: string;
-  icon?: IconDefinition;
+  iconUrl: string;
+  showIcon: boolean;
 }) {
+  const icon = useFontAwesomeIconDefinition(iconUrl);
   if (!value) return null;
   const content = (
     <>
-      {icon && <FontAwesomeIcon className="contact-icon" icon={icon} aria-hidden="true" />}
+      {showIcon && icon && <FontAwesomeIcon className="contact-icon" icon={icon} aria-hidden="true" />}
       <span>{value}</span>
     </>
   );
@@ -140,11 +142,8 @@ function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument;
                 <ContactValue
                   value={contact.value}
                   href={contact.href}
-                  icon={
-                    resume.design.showContactIcons
-                      ? getFontAwesomeIconDefinition(contact.iconUrl)
-                      : undefined
-                  }
+                  iconUrl={contact.iconUrl}
+                  showIcon={resume.design.showContactIcons}
                 />
               </span>
             ))}

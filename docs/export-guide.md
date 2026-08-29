@@ -10,7 +10,7 @@ Filename: `name-resume.md`.
 
 ## ATS PDF
 
-The PDF pipeline builds a text document with `@react-pdf/renderer`; it does not take a screenshot of the resume. Text remains selectable and searchable, links remain links, visible sections follow logical reading order, and long entries flow across A4 or Letter pages. Standard fonts and single-column structures are used for ATS templates.
+The PDF pipeline builds a text document with `@react-pdf/renderer`; it does not take a screenshot of the resume. It maps the selected template's header, section rules, pills, photo treatment, colors, typography, and spacing to the PDF layout. Text remains selectable and searchable, links remain links, visible sections follow logical reading order, and long entries flow across A4 or Letter pages. Standard fonts and single-column structures are used for ATS templates.
 
 Filename: `name-resume.pdf`.
 

@@ -92,7 +92,7 @@ export function createBlankResume(): ResumeDocument {
       accentColor: DEFAULT_ACCENT_COLOR,
       paperColor: DEFAULT_PAPER_COLOR,
       textColor: DEFAULT_TEXT_COLOR,
-      fontFamily: "Arial",
+      fontFamily: "Calibri",
       headingFontFamily: "Georgia",
       fontSize: 10.5,
       bulletSize: 8,

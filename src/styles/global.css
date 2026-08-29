@@ -305,6 +305,13 @@ output, .label-hint { color: var(--muted); font-size: 0.67rem; font-weight: 500;
 .design-subheading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
 .design-subheading h3 { margin: 0; font-family: Georgia, serif; font-size: .92rem; }
 .design-subheading span { color: var(--muted); font-size: .65rem; text-align: right; }
+.typography-presets { display: grid; margin: 0 0 18px; gap: 10px; }
+.typography-preset-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.typography-preset { display: grid; min-width: 0; padding: 11px; gap: 4px; color: var(--ink); background: var(--surface-muted); border: 1px solid var(--line); border-radius: 8px; text-align: left; }
+.typography-preset:hover { border-color: var(--ui-accent); }
+.typography-preset.selected { border-color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent), var(--surface) 94%); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ui-accent), transparent 84%); }
+.typography-preset strong { font-family: Georgia, serif; font-size: .72rem; }
+.typography-preset span { color: var(--muted); font-size: .59rem; line-height: 1.4; }
 .template-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
 .template-card { display: grid; min-width: 0; padding: 10px; grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 10px; color: var(--ink); background: var(--surface-muted); border: 1px solid var(--line); border-radius: 9px; text-align: left; }
 .template-card:hover { border-color: var(--ui-accent); }
@@ -352,12 +359,18 @@ input[type="color"] { width: 38px; padding: 3px; }
 .icon-picker-trigger-preview { display: grid; width: 27px; height: 27px; place-items: center; color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent), var(--surface) 91%); border-radius: 6px; }
 .icon-picker-trigger-preview svg { width: 14px; height: 14px; }
 .icon-picker-caret { color: var(--muted); font-size: .7rem; }
-.icon-picker-popover { position: absolute; z-index: 60; top: calc(100% + 7px); right: 0; display: grid; width: min(252px, calc(100vw - 48px)); padding: 10px; grid-template-columns: repeat(4, minmax(42px, 1fr)); gap: 7px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 40px rgba(5, 12, 9, .25); }
+.icon-picker-popover { position: absolute; z-index: 60; top: calc(100% + 7px); right: 0; width: min(340px, calc(100vw - 48px)); padding: 10px; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 10px; box-shadow: 0 16px 40px rgba(5, 12, 9, .25); }
+.icon-picker-search-row { display: grid; margin-bottom: 9px; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+.icon-picker-search-row input { min-width: 0; height: 36px; }
+.icon-picker-search-row span { color: var(--muted); font-size: .58rem; font-weight: 750; white-space: nowrap; }
+.icon-picker-options { display: grid; max-height: 286px; padding: 1px 4px 1px 1px; grid-template-columns: repeat(5, minmax(42px, 1fr)); gap: 7px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .icon-picker-option { display: grid; min-width: 0; height: 44px; padding: 0; place-items: center; color: var(--ink); background: var(--surface-muted); border: 1px solid transparent; border-radius: 8px; }
 .icon-picker-option:hover, .icon-picker-option:focus-visible { color: var(--ui-accent); background: color-mix(in srgb, var(--ui-accent), var(--surface) 90%); border-color: var(--ui-accent); }
 .icon-picker-option.selected { color: white; background: var(--ui-accent); border-color: var(--ui-accent); }
 .icon-picker-option svg { width: 17px; height: 17px; }
 .icon-picker-none { font-size: .6rem; font-weight: 800; }
+.icon-picker-empty { margin: 14px 4px; grid-column: 1 / -1; color: var(--muted); font-size: .7rem; text-align: center; }
+.icon-picker-more { margin: 5px 4px 8px; grid-column: 1 / -1; color: var(--muted); font-size: .61rem; text-align: center; }
 .icon-persistence-note { margin: 0; color: var(--muted); font-size: .66rem; line-height: 1.45; }
 .ats-score-row { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 20px; }
 .score-ring { display: grid; width: 104px; height: 104px; place-content: center; color: var(--ink); background: radial-gradient(circle closest-side, var(--surface) 77%, transparent 79% 99%), conic-gradient(var(--ui-accent) var(--ats-score), var(--line) 0); border-radius: 50%; text-align: center; }
@@ -438,14 +451,15 @@ input[type="color"] { width: 38px; padding: 3px; }
 .resume-entry li { margin-bottom: 2px; padding-left: 2px; }
 .resume-bullets li::marker { font-size: var(--resume-bullet-size); color: var(--resume-accent); }
 .simple-pill { display: inline-block; padding: 3px 8px; background: color-mix(in srgb, var(--resume-accent), var(--resume-paper) 91%); border-radius: 3px; font-size: 9pt; }
-.resume-page.template-modern .resume-header { padding: 0 0 12px 12px; border-bottom-width: 0; border-left: 4px solid var(--resume-accent); }
-.resume-page.template-modern .resume-header h1 { color: var(--resume-accent); font-family: var(--resume-font), Arial, sans-serif; font-size: 24pt; font-weight: 800; letter-spacing: -.035em; }
-.resume-page.template-modern .resume-role { color: var(--resume-text); font-size: 10pt; letter-spacing: .09em; text-transform: uppercase; }
-.resume-page.template-modern .resume-section-heading { padding-top: 17px; }
+.resume-page.template-modern .resume-header { padding: 12px 14px 13px; background: color-mix(in srgb, var(--resume-accent), var(--resume-paper) 94%); border: 0; border-top: 4px solid var(--resume-accent); }
+.resume-page.template-modern .resume-header h1 { color: var(--resume-accent); font-family: var(--resume-font), Arial, sans-serif; font-size: 25pt; font-weight: 800; letter-spacing: -.03em; }
+.resume-page.template-modern .resume-role { margin-top: 4px; color: var(--resume-text); font-size: 9.5pt; letter-spacing: .1em; text-transform: uppercase; }
+.resume-page.template-modern .resume-section-heading { padding-top: var(--resume-section-spacing); }
 .resume-page.template-modern .resume-section-heading > h2 { padding: 2px 0 2px 8px; border-bottom: 0; border-left: 3px solid var(--resume-accent); font-family: var(--resume-font), Arial, sans-serif; font-size: 9.5pt; letter-spacing: .1em; }
 .resume-page.template-modern .simple-pill { background: transparent; border: 1px solid color-mix(in srgb, var(--resume-accent), transparent 62%); border-radius: 10px; }
-.resume-page.template-professional .resume-header { padding-bottom: 13px; border-bottom-width: 1px; }
-.resume-page.template-professional .resume-header h1 { font-size: 24pt; font-weight: 700; }
+.resume-page.template-professional .resume-header { padding: 12px 14px 13px; background: color-mix(in srgb, var(--resume-accent), var(--resume-paper) 93%); border: 0; border-top: 3px solid var(--resume-accent); }
+.resume-page.template-professional .resume-header h1 { font-size: 25pt; font-weight: 700; }
+.resume-page.template-professional .resume-role { margin-top: 4px; font-size: 10.5pt; letter-spacing: .065em; text-transform: uppercase; }
 .resume-page.template-professional .resume-section-heading > h2 { letter-spacing: .08em; }
 .resume-photo { width: 28mm; height: 28mm; flex: none; overflow: hidden; border: 2px solid var(--resume-accent); }
 .resume-photo img { width: 100%; height: 100%; object-fit: cover; }

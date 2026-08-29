@@ -1,12 +1,18 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  SUPPORTED_FONT_AWESOME_ICON_NAMES,
   createFontAwesomeIconUrl,
   formatFontAwesomeIconName,
-  getFontAwesomeIconName,
+  getFontAwesomeIconReference,
 } from "../../constants/contactIcons";
-import { getFontAwesomeIconDefinition } from "./fontAwesomeRegistry";
+import {
+  registerFontAwesomeIconDefinition,
+} from "./fontAwesomeRegistry";
+import type { FontAwesomeIconOption } from "./fontAwesomeCatalog";
+import { useFontAwesomeIconDefinition } from "./useFontAwesomeIconDefinition";
+
+const INITIAL_ICON_LIMIT = 160;
+const ICON_LIMIT_INCREMENT = 160;
 
 export function FontAwesomeIconPicker({
   value,
@@ -20,13 +26,39 @@ export function FontAwesomeIconPicker({
   onChange: (iconUrl: string) => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [iconOptions, setIconOptions] = useState<FontAwesomeIconOption[]>([]);
+  const [visibleLimit, setVisibleLimit] = useState(INITIAL_ICON_LIMIT);
   const pickerRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
   const gridId = useId();
-  const selectedIconName = getFontAwesomeIconName(value);
-  const selectedIcon = getFontAwesomeIconDefinition(value);
+  const selectedIcon = useFontAwesomeIconDefinition(value);
+  const selectedReference = getFontAwesomeIconReference(value);
+  const selectedIconName = selectedIcon?.iconName ?? selectedReference?.iconName;
+  const normalizedSearch = search.trim().toLocaleLowerCase("en");
+  const visibleIcons = useMemo(
+    () => normalizedSearch
+      ? iconOptions.filter((option) => option.searchText.includes(normalizedSearch))
+      : iconOptions,
+    [iconOptions, normalizedSearch],
+  );
+  const renderedIcons = visibleIcons.slice(0, visibleLimit);
+
+  useEffect(() => {
+    if (!open || iconOptions.length > 0) return;
+    let active = true;
+    void import("./fontAwesomeCatalog").then((catalog) => {
+      if (active) setIconOptions(catalog.FONT_AWESOME_ICON_OPTIONS);
+    });
+    return () => {
+      active = false;
+    };
+  }, [iconOptions.length, open]);
 
   useEffect(() => {
     if (!open) return;
+
+    const focusFrame = window.requestAnimationFrame(() => searchRef.current?.focus());
 
     const closeWhenClickingOutside = (event: PointerEvent) => {
       if (!pickerRef.current?.contains(event.target as Node)) setOpen(false);
@@ -38,14 +70,17 @@ export function FontAwesomeIconPicker({
     document.addEventListener("pointerdown", closeWhenClickingOutside);
     document.addEventListener("keydown", closeOnEscape);
     return () => {
+      window.cancelAnimationFrame(focusFrame);
       document.removeEventListener("pointerdown", closeWhenClickingOutside);
       document.removeEventListener("keydown", closeOnEscape);
     };
   }, [open]);
 
-  const selectIcon = (iconUrl: string) => {
+  const selectIcon = (iconUrl: string, option?: FontAwesomeIconOption) => {
+    if (option) registerFontAwesomeIconDefinition(option.style, option.definition);
     onChange(iconUrl);
     setOpen(false);
+    setSearch("");
   };
 
   return (
@@ -55,7 +90,7 @@ export function FontAwesomeIconPicker({
         type="button"
         disabled={disabled}
         aria-label={`${label} icon picker`}
-        aria-haspopup="listbox"
+        aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={gridId}
         onClick={() => setOpen((current) => !current)}
@@ -68,37 +103,81 @@ export function FontAwesomeIconPicker({
       </button>
 
       {open && (
-        <div className="icon-picker-popover" id={gridId} role="listbox" aria-label={`${label} icons`}>
-          <button
-            className={!selectedIconName ? "icon-picker-option selected" : "icon-picker-option"}
-            type="button"
-            role="option"
-            aria-selected={!selectedIconName}
-            aria-label={`Use no icon for ${label}`}
-            title="No icon"
-            onClick={() => selectIcon("")}
+        <div className="icon-picker-popover" role="dialog" aria-label={`${label} icon picker`}>
+          <div className="icon-picker-search-row">
+            <input
+              ref={searchRef}
+              type="search"
+              value={search}
+              aria-label={`Search ${label} icons`}
+              placeholder="Search all free icons…"
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setVisibleLimit(INITIAL_ICON_LIMIT);
+              }}
+            />
+            <span aria-live="polite">{visibleIcons.length} icons</span>
+          </div>
+          <div
+            className="icon-picker-options"
+            id={gridId}
+            role="listbox"
+            aria-label={`${label} icons`}
+            onScroll={(event) => {
+              const element = event.currentTarget;
+              if (element.scrollHeight - element.scrollTop - element.clientHeight < 80) {
+                setVisibleLimit((current) => Math.min(
+                  current + ICON_LIMIT_INCREMENT,
+                  visibleIcons.length,
+                ));
+              }
+            }}
           >
-            <span className="icon-picker-none" aria-hidden="true">None</span>
-          </button>
-          {SUPPORTED_FONT_AWESOME_ICON_NAMES.map((iconName) => {
-            const iconUrl = createFontAwesomeIconUrl(iconName);
-            const icon = getFontAwesomeIconDefinition(iconUrl);
-            const iconLabel = formatFontAwesomeIconName(iconName);
-            return (
+            {!normalizedSearch && (
               <button
-                className={selectedIconName === iconName ? "icon-picker-option selected" : "icon-picker-option"}
+                className={!selectedIconName ? "icon-picker-option selected" : "icon-picker-option"}
                 type="button"
                 role="option"
-                aria-selected={selectedIconName === iconName}
-                aria-label={`Use ${iconLabel} icon for ${label}`}
-                title={iconLabel}
-                key={iconName}
-                onClick={() => selectIcon(iconUrl)}
+                aria-selected={!selectedIconName}
+                aria-label={`Use no icon for ${label}`}
+                title="No icon"
+                onClick={() => selectIcon("")}
               >
-                {icon && <FontAwesomeIcon icon={icon} aria-hidden="true" />}
+                <span className="icon-picker-none" aria-hidden="true">None</span>
               </button>
-            );
-          })}
+            )}
+            {renderedIcons.map((option) => {
+              const iconUrl = createFontAwesomeIconUrl(option.iconName, option.style);
+              const selected = selectedReference?.iconName === option.iconName
+                && selectedReference.style === option.style;
+              return (
+                <button
+                  className={selected ? "icon-picker-option selected" : "icon-picker-option"}
+                  type="button"
+                  role="option"
+                  aria-selected={selected}
+                  aria-label={`Use ${option.label} icon for ${label}`}
+                  title={`${option.label} · ${option.style === "brands" ? "Brands" : "Solid"}`}
+                  key={`${option.style}-${option.iconName}`}
+                  onClick={() => selectIcon(iconUrl, option)}
+                >
+                  <FontAwesomeIcon icon={option.definition} aria-hidden="true" />
+                </button>
+              );
+            })}
+            {visibleIcons.length === 0 && (
+              <p className="icon-picker-empty">
+                {iconOptions.length === 0
+                  ? "Loading Font Awesome Free icons…"
+                  : `No free icons match “${search.trim()}”.`}
+              </p>
+            )}
+            {renderedIcons.length < visibleIcons.length && (
+              <p className="icon-picker-more">
+                Keep scrolling to browse {visibleIcons.length - renderedIcons.length} more icons.
+              </p>
+            )}
+          </div>
         </div>
       )}
     </div>
