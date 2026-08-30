@@ -1,3 +1,5 @@
+import { useMemo, useState } from "react";
+import type { TemplateCategory } from "../../constants/resumeTemplates";
 import {
   ATS_SAFE_FONTS,
   DEFAULT_ACCENT_COLOR,
@@ -40,6 +42,34 @@ const TYPOGRAPHY_PRESETS = [
   },
 ] as const;
 
+type TemplateFilter = "all" | TemplateCategory;
+
+const TEMPLATE_FILTERS: Array<{ id: TemplateFilter; label: string }> = [
+  { id: "all", label: "All" },
+  { id: "basic", label: "Basic" },
+  { id: "advanced", label: "Advanced" },
+  { id: "premium", label: "Premium" },
+];
+
+function TemplateMiniature({ template }: { template: (typeof TEMPLATE_DEFINITIONS)[number] }) {
+  return (
+    <span
+      className="template-miniature"
+      data-layout={template.layout}
+      data-section-style={template.sectionStyle}
+      data-skill-style={template.skillStyle}
+      data-density={template.density}
+      aria-hidden="true"
+    >
+      <span className="mini-header"><b /><i /><em /></span>
+      <span className="mini-contact"><i /><i /><i /></span>
+      <span className="mini-section"><b /><i /><i /></span>
+      <span className="mini-section mini-section-short"><b /><i /><i /></span>
+      {template.supportsPhoto && <span className="mini-photo" />}
+    </span>
+  );
+}
+
 function ColorControl({
   id,
   label,
@@ -76,8 +106,19 @@ export function DesignPanel({
   photo,
   onPhotoChange,
 }: DesignPanelProps) {
+  const [templateFilter, setTemplateFilter] = useState<TemplateFilter>("all");
+  const [templateSearch, setTemplateSearch] = useState("");
   const textContrast = contrastRatio(design.textColor, design.paperColor);
   const accentContrast = contrastRatio(design.accentColor, design.paperColor);
+  const visibleTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLocaleLowerCase("en");
+    return TEMPLATE_DEFINITIONS.filter((template) =>
+      (templateFilter === "all" || template.category === templateFilter)
+      && (!query || `${template.name} ${template.description} ${template.layout}`
+        .toLocaleLowerCase("en")
+        .includes(query)),
+    );
+  }, [templateFilter, templateSearch]);
 
   return (
     <div className="editor-stack">
@@ -91,10 +132,38 @@ export function DesignPanel({
         <div className="template-picker">
           <div className="design-subheading">
             <h3>Template</h3>
-            <span>All current templates use an ATS-safe single column.</span>
+            <span>{TEMPLATE_DEFINITIONS.length} professionally configured layouts</span>
+          </div>
+          <div className="template-gallery-toolbar">
+            <div className="template-category-tabs" role="tablist" aria-label="Template categories">
+              {TEMPLATE_FILTERS.map((filter) => {
+                const count = filter.id === "all"
+                  ? TEMPLATE_DEFINITIONS.length
+                  : TEMPLATE_DEFINITIONS.filter((template) => template.category === filter.id).length;
+                return (
+                  <button
+                    type="button"
+                    role="tab"
+                    aria-selected={templateFilter === filter.id}
+                    className={templateFilter === filter.id ? "selected" : ""}
+                    key={filter.id}
+                    onClick={() => setTemplateFilter(filter.id)}
+                  >
+                    {filter.label} <span>{count}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <input
+              type="search"
+              value={templateSearch}
+              aria-label="Search resume templates"
+              placeholder="Search templates"
+              onChange={(event) => setTemplateSearch(event.target.value)}
+            />
           </div>
           <div className="template-grid" role="radiogroup" aria-label="Resume template">
-            {TEMPLATE_DEFINITIONS.map((template) => (
+            {visibleTemplates.map((template) => (
               <button
                 className={
                   template.id === design.templateId ? "template-card selected" : "template-card"
@@ -105,17 +174,27 @@ export function DesignPanel({
                 key={template.id}
                 onClick={() => onDesignChange({ templateId: template.id })}
               >
-                <span className={`template-miniature template-miniature-${template.id}`} aria-hidden="true">
-                  <i /><i /><i /><i />
-                </span>
+                <TemplateMiniature template={template} />
                 <span className="template-card-copy">
-                  <strong>{template.name}</strong>
+                  <span className="template-card-heading">
+                    <strong>{template.name}</strong>
+                    <b className={`template-category-badge ${template.category}`}>{template.category}</b>
+                  </span>
                   <small>{template.description}</small>
-                  <em>{template.atsRating === "optimized" ? "ATS optimized" : "ATS compatible"}</em>
+                  <em>
+                    {template.atsRating === "optimized"
+                      ? "ATS optimized"
+                      : template.atsRating === "compatible"
+                        ? "ATS compatible"
+                        : "Creative"}
+                  </em>
                 </span>
               </button>
             ))}
           </div>
+          {visibleTemplates.length === 0 && (
+            <p className="template-empty">No templates match “{templateSearch.trim()}”.</p>
+          )}
         </div>
 
         <PhotoControls

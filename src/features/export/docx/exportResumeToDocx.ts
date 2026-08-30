@@ -1,4 +1,5 @@
 import {
+  AlignmentType,
   BorderStyle,
   Document,
   ExternalHyperlink,
@@ -15,10 +16,26 @@ import {
   VerticalPositionRelativeFrom,
   convertMillimetersToTwip,
 } from "docx";
+import {
+  getResumeTemplate,
+  getTemplateDensityFactor,
+} from "../../../constants/resumeTemplates";
 import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
 import { downloadBlob } from "../../../utils/files";
 
 const POINTS_TO_HALF_POINTS = 2;
+
+function mixHexColors(foreground: string, background: string, foregroundRatio: number): string {
+  const foregroundValue = Number.parseInt(foreground.replace("#", ""), 16);
+  const backgroundValue = Number.parseInt(background.replace("#", ""), 16);
+  const channel = (shift: number) => Math.round(
+    ((foregroundValue >> shift) & 0xff) * foregroundRatio
+      + ((backgroundValue >> shift) & 0xff) * (1 - foregroundRatio),
+  );
+  return [channel(16), channel(8), channel(0)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("");
+}
 
 function safeWebUrl(value: string): string | undefined {
   try {
@@ -87,8 +104,9 @@ function entryParagraphs(
 }
 
 function createProfessionalPhotoRun(resume: ResumeDocument): ImageRun | null {
+  const selectedTemplate = getResumeTemplate(resume.design.templateId);
   if (
-    resume.design.templateId !== "professional"
+    !selectedTemplate.supportsPhoto
     || !resume.design.showPhoto
     || !resume.personal.photo
   ) return null;
@@ -118,21 +136,42 @@ function createProfessionalPhotoRun(resume: ResumeDocument): ImageRun | null {
 }
 
 export function buildResumeDocxDocument(resume: ResumeDocument): Document {
+  const selectedTemplate = getResumeTemplate(resume.design.templateId);
+  const densityFactor = getTemplateDensityFactor(selectedTemplate.density);
   const accentColor = resume.design.accentColor.replace("#", "");
   const textColor = resume.design.textColor.replace("#", "");
+  const subtleAccent = mixHexColors(
+    resume.design.accentColor,
+    resume.design.paperColor,
+    0.1,
+  );
   const bodySize = Math.round(resume.design.fontSize * POINTS_TO_HALF_POINTS);
   const headingSize = Math.round(resume.design.headingSize * POINTS_TO_HALF_POINTS);
   const pageWidth = resume.design.pageSize === "LETTER" ? 215.9 : 210;
   const pageHeight = resume.design.pageSize === "LETTER" ? 279.4 : 297;
   const margin = convertMillimetersToTwip(resume.design.pageMargin);
-  const modernTemplate = resume.design.templateId === "modern";
-  const professionalTemplate = resume.design.templateId === "professional";
   const lineSpacing = Math.round(240 * resume.design.lineHeight);
-  const entrySpacing = Math.round(resume.design.entrySpacing * 12);
-  const headerBorder = modernTemplate
-    ? { left: { color: accentColor, style: BorderStyle.SINGLE, size: 18, space: 7 } }
-    : undefined;
-  const headerIndent = modernTemplate ? { left: 150 } : undefined;
+  const entrySpacing = Math.round(resume.design.entrySpacing * densityFactor * 12);
+  const thinBorder = { color: accentColor, style: BorderStyle.SINGLE, size: 7, space: 5 };
+  const strongBorder = { color: accentColor, style: BorderStyle.SINGLE, size: 16, space: 7 };
+  const headerBorder = selectedTemplate.layout === "rail"
+    ? { left: strongBorder }
+    : selectedTemplate.layout === "band"
+      ? { top: strongBorder }
+      : selectedTemplate.layout === "boxed"
+        ? { top: thinBorder, right: thinBorder, bottom: thinBorder, left: thinBorder }
+        : selectedTemplate.layout === "executive"
+          ? { top: strongBorder, bottom: strongBorder }
+          : selectedTemplate.layout === "minimal"
+            ? undefined
+            : { bottom: thinBorder };
+  const headerIndent = selectedTemplate.layout === "rail" ? { left: 150 } : undefined;
+  const headerAlignment = selectedTemplate.layout === "centered"
+    ? AlignmentType.CENTER
+    : AlignmentType.LEFT;
+  const displayWithSans = selectedTemplate.headingTone === "sans"
+    || ["band", "rail", "split"].includes(selectedTemplate.layout);
+  const uppercaseRole = ["band", "editorial", "executive", "split"].includes(selectedTemplate.layout);
   const photoRun = createProfessionalPhotoRun(resume);
   const contacts: Array<{ label: string; href?: string }> = [
     { label: resume.personal.email, href: resume.personal.email ? `mailto:${resume.personal.email}` : undefined },
@@ -154,20 +193,22 @@ export function buildResumeDocxDocument(resume: ResumeDocument): Document {
       spacing: { after: 30 },
       border: headerBorder,
       indent: headerIndent,
+      alignment: headerAlignment,
     }),
     new Paragraph({
       children: [new TextRun({
-        text: modernTemplate
+        text: uppercaseRole
           ? resume.personal.professionalTitle.toLocaleUpperCase("en")
           : resume.personal.professionalTitle,
         bold: true,
-        color: modernTemplate ? textColor : accentColor,
-        characterSpacing: modernTemplate ? 18 : undefined,
+        color: selectedTemplate.layout === "band" ? textColor : accentColor,
+        characterSpacing: uppercaseRole ? 18 : undefined,
       })],
       keepNext: true,
       spacing: { after: 45 },
       border: headerBorder,
       indent: headerIndent,
+      alignment: headerAlignment,
     }),
     new Paragraph({
       children: contacts.flatMap((contact, index) => [
@@ -175,39 +216,70 @@ export function buildResumeDocxDocument(resume: ResumeDocument): Document {
         contactRun(contact.label, contact.href),
       ]),
       spacing: { after: 110 },
-      border: modernTemplate
-        ? headerBorder
-        : { bottom: { color: accentColor, style: BorderStyle.SINGLE, size: professionalTemplate ? 5 : 9, space: 5 } },
+      border: headerBorder,
       indent: headerIndent,
+      alignment: headerAlignment,
     }),
   ];
 
   [...resume.sections]
     .filter((section) => section.visible)
     .sort((first, second) => first.order - second.order)
-    .forEach((section) => {
+    .forEach((section, sectionIndex) => {
+      const sectionBorder = selectedTemplate.sectionStyle === "left-rule"
+        ? { left: strongBorder }
+        : selectedTemplate.sectionStyle === "double-rule"
+          ? { top: thinBorder, bottom: thinBorder }
+          : selectedTemplate.sectionStyle === "boxed"
+            ? { top: thinBorder, right: thinBorder, bottom: thinBorder, left: thinBorder }
+            : selectedTemplate.sectionStyle === "plain" || selectedTemplate.sectionStyle === "label"
+              ? undefined
+              : { bottom: thinBorder };
+      const sectionTitle = selectedTemplate.sectionStyle === "numbered"
+        ? `${String(sectionIndex + 1).padStart(2, "0")}  ${section.title}`
+        : section.title;
       children.push(new Paragraph({
-        text: section.title,
+        children: [new TextRun({
+          text: sectionTitle,
+          bold: true,
+          color: selectedTemplate.sectionStyle === "label"
+            ? resume.design.paperColor.replace("#", "")
+            : accentColor,
+        })],
         heading: HeadingLevel.HEADING_1,
         keepNext: true,
-        border: modernTemplate
-          ? { left: { color: accentColor, style: BorderStyle.SINGLE, size: 14, space: 6 } }
-          : { bottom: { color: accentColor, style: BorderStyle.SINGLE, size: 5, space: 2 } },
-        indent: modernTemplate ? { left: 120 } : undefined,
-        spacing: { before: Math.round(resume.design.sectionSpacing * 12), after: 55 },
+        border: sectionBorder,
+        indent: selectedTemplate.sectionStyle === "left-rule" ? { left: 120 } : undefined,
+        shading: selectedTemplate.sectionStyle === "band"
+          ? { fill: subtleAccent }
+          : selectedTemplate.sectionStyle === "label"
+            ? { fill: accentColor }
+            : undefined,
+        spacing: { before: Math.round(resume.design.sectionSpacing * densityFactor * 12), after: 55 },
       }));
       if (section.content) children.push(...textParagraphs(section.content, 55, lineSpacing));
       const simpleItems = section.items.every(
         (item) => !item.subtitle && !item.meta && !item.description && item.bullets.length === 0,
       );
       if (simpleItems) {
-        section.items.forEach((item) => {
+        if (selectedTemplate.skillStyle === "inline" || selectedTemplate.skillStyle === "chips") {
           children.push(new Paragraph({
-            children: [new TextRun(item.title)],
-            bullet: { level: 0 },
-            spacing: { after: 25 },
+            children: section.items.flatMap((item, index) => [
+              ...(index ? [new TextRun({ text: "   •   ", color: accentColor })] : []),
+              new TextRun({ text: item.title, bold: selectedTemplate.skillStyle === "chips" }),
+            ]),
+            spacing: { after: 35, line: lineSpacing },
           }));
-        });
+        } else {
+          section.items.forEach((item) => {
+            children.push(new Paragraph({
+              children: [new TextRun(item.title)],
+              bullet: { level: 0 },
+              border: selectedTemplate.skillStyle === "outline" ? { bottom: thinBorder } : undefined,
+              spacing: { after: 25 },
+            }));
+          });
+        }
       } else {
         section.items.forEach((item) => children.push(...entryParagraphs(
           item,
@@ -236,16 +308,22 @@ export function buildResumeDocxDocument(resume: ResumeDocument): Document {
         },
         title: {
           run: {
-            font: modernTemplate ? resume.design.fontFamily : resume.design.headingFontFamily,
-            size: modernTemplate ? Math.max(40, bodySize + 20) : Math.max(36, bodySize + 18),
+            font: displayWithSans ? resume.design.fontFamily : resume.design.headingFontFamily,
+            size: selectedTemplate.layout === "editorial"
+              ? Math.max(46, bodySize + 24)
+              : displayWithSans
+                ? Math.max(40, bodySize + 20)
+                : Math.max(36, bodySize + 18),
             bold: true,
-            color: modernTemplate ? accentColor : textColor,
+            color: ["band", "rail", "split"].includes(selectedTemplate.layout) ? accentColor : textColor,
           },
           paragraph: { spacing: { after: 30 } },
         },
         heading1: {
           run: {
-            font: modernTemplate ? resume.design.fontFamily : resume.design.headingFontFamily,
+            font: selectedTemplate.headingTone === "sans"
+              ? resume.design.fontFamily
+              : resume.design.headingFontFamily,
             size: headingSize,
             bold: true,
             color: accentColor,

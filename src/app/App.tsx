@@ -760,7 +760,8 @@ export function App() {
       const pageCount = await exportResumeImages(`${base}-resume`, format);
       setMessage(`${pageCount} ${format === "png" ? "PNG" : "JPEG"} resume ${pageCount === 1 ? "page" : "pages"} downloaded.`);
       setShowExportDialog(false);
-    } catch {
+    } catch (error) {
+      if (import.meta.env.DEV) console.error("Resume image export failed", error);
       setMessage(`The ${format === "png" ? "PNG" : "JPEG"} export could not be completed. Please try again.`);
     } finally {
       setExportingFormat(null);

@@ -8,7 +8,8 @@ location: "City, Country"
 website: ""
 linkedin: ""
 github: ""
-# Supported values: classic, modern, professional
+# Choose any Basic, Advanced, or Premium template ID shown in the Design gallery.
+# Examples: classic, clean-slate, modern, professional, executive, editorial, pinnacle
 template: "classic"
 accent_color: "#1F4E79"
 paper_color: "#FFFFFF"

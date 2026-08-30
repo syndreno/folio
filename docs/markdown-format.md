@@ -20,7 +20,7 @@ The front matter stores portable settings such as the format version, personal d
 
 ## Templates
 
-Set `template` to `classic`, `modern`, or `professional`. Classic and Modern are ATS optimized. Professional is single-column and ATS compatible, with an optional profile photo. All templates support A4 and Letter pages. The selected template is restored during import without changing resume content. Unsupported template IDs fall back to Classic ATS with a non-blocking warning.
+Set `template` to any template ID shown in the Design gallery. The catalog contains 54 layouts grouped into Basic, Advanced, and Premium categories. Every template supports A4 and Letter pages; ATS ratings and photo support are shown on each template card. The selected template is restored during import without changing resume content. Unsupported template IDs fall back to Classic ATS with a non-blocking warning.
 
 Portable layout settings include `letter_spacing`, `section_spacing`, `entry_spacing`, `page_margin`, and `heading_size`. The editor constrains these values to professional, readable ranges.
 

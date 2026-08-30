@@ -47,7 +47,7 @@ describe("DOCX export", () => {
 
     expect(documentXml).toContain("DESIGN ENGINEER");
     expect(documentXml).toContain("w:left");
-    expect(documentXml).not.toContain("<w:pBdr><w:bottom");
+    expect(documentXml).toContain("w:top");
     expect(documentXml).toContain('w:background w:color="F7F9FC"');
     expect(stylesXml).toContain('w:color w:val="2F6FED"');
   });

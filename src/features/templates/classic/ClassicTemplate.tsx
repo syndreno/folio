@@ -8,6 +8,10 @@ import {
   type HTMLAttributes,
 } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import {
+  getResumeTemplate,
+  getTemplateDensityFactor,
+} from "../../../constants/resumeTemplates";
 import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
 import type { SectionDropPosition } from "../../../domain/resume.transforms";
 import { useFontAwesomeIconDefinition } from "../../icons/useFontAwesomeIconDefinition";
@@ -112,6 +116,7 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
 }
 
 function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument; measurement?: boolean }) {
+  const selectedTemplate = getResumeTemplate(resume.design.templateId);
   const contacts = [
     { key: "email", value: resume.personal.email, href: resume.personal.email ? `mailto:${resume.personal.email}` : undefined, iconUrl: resume.design.contactIconUrls.email },
     { key: "phone", value: resume.personal.phone, href: undefined, iconUrl: resume.design.contactIconUrls.phone },
@@ -126,7 +131,7 @@ function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument;
       iconUrl: link.iconUrl,
     })),
   ].filter((contact) => contact.value);
-  const showPhoto = resume.design.templateId === "professional"
+  const showPhoto = selectedTemplate.supportsPhoto
     && resume.design.showPhoto
     && Boolean(resume.personal.photo);
 
@@ -277,6 +282,8 @@ export function ClassicTemplate({
   onItemReorder,
   onSectionSelect,
 }: ResumeTemplateProps) {
+  const selectedTemplate = getResumeTemplate(resume.design.templateId);
+  const densityFactor = getTemplateDensityFactor(selectedTemplate.density);
   const blocks = useMemo(() => createPreviewBlocks(resume), [resume]);
   const blockMap = useMemo(
     () => new Map(blocks.map((block) => [block.id, block])),
@@ -307,8 +314,8 @@ export function ClassicTemplate({
     "--resume-bullet-size": `${resume.design.bulletSize}pt`,
     "--resume-line-height": resume.design.lineHeight,
     "--resume-letter-spacing": `${resume.design.letterSpacing}pt`,
-    "--resume-section-spacing": `${resume.design.sectionSpacing}pt`,
-    "--resume-entry-spacing": `${resume.design.entrySpacing}pt`,
+    "--resume-section-spacing": `${resume.design.sectionSpacing * densityFactor}pt`,
+    "--resume-entry-spacing": `${resume.design.entrySpacing * densityFactor}pt`,
     "--resume-page-margin": `${resume.design.pageMargin}mm`,
     "--resume-heading-size": `${resume.design.headingSize}pt`,
   } as CSSProperties;
@@ -382,6 +389,11 @@ export function ClassicTemplate({
           <article
             className={`resume-page ${pageSizeClass} ${templateClass}`}
             style={style}
+            data-template-layout={selectedTemplate.layout}
+            data-section-style={selectedTemplate.sectionStyle}
+            data-skill-style={selectedTemplate.skillStyle}
+            data-heading-tone={selectedTemplate.headingTone}
+            data-density={selectedTemplate.density}
             aria-label={`${resume.personal.fullName || "Resume"} preview, page ${pageIndex + 1} of ${pageBlockIds.length}`}
           >
             {pageIndex === 0 && <ResumeHeader resume={resume} />}
@@ -532,6 +544,11 @@ export function ClassicTemplate({
         ref={measurementPageRef}
         className={`resume-page resume-measurement ${pageSizeClass} ${templateClass}`}
         style={style}
+        data-template-layout={selectedTemplate.layout}
+        data-section-style={selectedTemplate.sectionStyle}
+        data-skill-style={selectedTemplate.skillStyle}
+        data-heading-tone={selectedTemplate.headingTone}
+        data-density={selectedTemplate.density}
         aria-hidden="true"
       >
         <ResumeHeader resume={resume} measurement />

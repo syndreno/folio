@@ -67,8 +67,8 @@ export type ContactIconUrls = Record<ContactIconKey, string>;
 
 export type PageSize = "A4" | "LETTER";
 
-export const RESUME_TEMPLATE_IDS = ["classic", "modern", "professional"] as const;
-export type ResumeTemplateId = (typeof RESUME_TEMPLATE_IDS)[number];
+export { RESUME_TEMPLATE_IDS };
+export type { ResumeTemplateId };
 export type PhotoShape = "square" | "rounded" | "circle";
 
 export function isResumeTemplateId(value: unknown): value is ResumeTemplateId {
@@ -113,3 +113,7 @@ export interface ImportResult {
   resume: ResumeDocument;
   warnings: string[];
 }
+import {
+  RESUME_TEMPLATE_IDS,
+  type ResumeTemplateId,
+} from "../constants/resumeTemplates";

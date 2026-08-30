@@ -40,12 +40,20 @@ function TemplateHarness() {
 }
 
 describe("template selection", () => {
-  it("registers both templates as ATS-optimized single-column layouts", () => {
-    expect(TEMPLATE_DEFINITIONS.map((template) => template.id)).toEqual([
-      "classic",
-      "modern",
-      "professional",
-    ]);
+  it("registers 54 distinct templates across three professional categories", () => {
+    expect(TEMPLATE_DEFINITIONS).toHaveLength(54);
+    expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "basic")).toHaveLength(18);
+    expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "advanced")).toHaveLength(18);
+    expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "premium")).toHaveLength(18);
+    const designSignatures = new Set(TEMPLATE_DEFINITIONS.map((template) => [
+      template.layout,
+      template.sectionStyle,
+      template.skillStyle,
+      template.density,
+      template.headingTone,
+      template.supportsPhoto,
+    ].join("|")));
+    expect(designSignatures).toHaveLength(54);
     expect(TEMPLATE_REGISTRY.modern).toMatchObject({
       atsRating: "optimized",
       supportsTwoColumns: false,
@@ -63,9 +71,9 @@ describe("template selection", () => {
       "Preserved Candidate",
     );
 
-    const modernTemplate = container.querySelector<HTMLButtonElement>(
-      'button[role="radio"][aria-checked="false"]',
-    );
+    const modernTemplate = Array.from(
+      container.querySelectorAll<HTMLButtonElement>('button[role="radio"]'),
+    ).find((button) => button.textContent?.includes("Modern ATS"));
     act(() => modernTemplate?.click());
 
     expect(container.querySelector(".template-modern")?.textContent).toContain(

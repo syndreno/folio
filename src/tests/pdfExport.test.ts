@@ -51,7 +51,7 @@ describe("ATS PDF export", () => {
     const modernStyles = createPdfTemplateStyles(modern);
     expect(modernStyles.header).toMatchObject({ borderTopWidth: 3, paddingLeft: 10.5 });
     expect(modernStyles.header).toHaveProperty("backgroundColor");
-    expect(modernStyles.sectionTitle).toMatchObject({ borderLeftWidth: 2.25, fontSize: 9.5 });
+    expect(modernStyles.sectionTitle).toMatchObject({ borderLeftWidth: 2.25, fontSize: 10 });
     expect(modernStyles.simpleItem).toMatchObject({ borderWidth: 0.75, borderRadius: 7.5 });
 
     const professional = createBlankResume();
@@ -60,7 +60,7 @@ describe("ATS PDF export", () => {
     professional.personal.photo =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const professionalStyles = createPdfTemplateStyles(professional);
-    expect(professionalStyles.header).toMatchObject({ borderTopWidth: 2.25, paddingLeft: 10.5 });
+    expect(professionalStyles.header).toMatchObject({ borderTopWidth: 3, paddingLeft: 10.5 });
     expect(professionalStyles.header.minHeight).toBeCloseTo(98.12, 1);
     expect(professionalStyles.header).toHaveProperty("backgroundColor");
     expect(professionalStyles.photoFrame).toMatchObject({ borderWidth: 1.5 });

@@ -12,7 +12,7 @@ Folio is a privacy-friendly resume builder that keeps Markdown as the portable s
 - Reorder sections and their entries from the editor or live preview; hide, show, and delete sections.
 - Undo and redo content, design, add/delete, and reorder changes from the header or keyboard.
 - See changes in a live A4 or Letter preview.
-- Switch between Classic ATS, Modern ATS, and photo-capable Professional templates without changing resume content.
+- Browse 54 distinct Basic, Advanced, and Premium resume templates without changing resume content.
 - Customize resume accent, page, and text colors with contrast guidance.
 - Choose ATS-safe fonts and tune font, bullet, heading, line, letter, section, entry, and page spacing.
 - Upload, replace, crop, zoom, position, shape, hide, or remove an optional local profile photo.

@@ -10,6 +10,10 @@ import {
   View,
 } from "@react-pdf/renderer";
 import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
+import {
+  getResumeTemplate,
+  getTemplateDensityFactor,
+} from "../../../constants/resumeTemplates";
 import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
 import { getFontAwesomeIconDefinition } from "../../icons/fontAwesomeRegistry";
 import { createPdfContactIconData } from "./pdfContactIcon";
@@ -168,9 +172,11 @@ function PdfEntry({
 }
 
 export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
+  const selectedTemplate = getResumeTemplate(resume.design.templateId);
+  const densityFactor = getTemplateDensityFactor(selectedTemplate.density);
   const bodyFont = pdfFontFamily(resume.design.fontFamily);
   const templateStyles = createPdfTemplateStyles(resume);
-  const showPhoto = resume.design.templateId === "professional"
+  const showPhoto = selectedTemplate.supportsPhoto
     && resume.design.showPhoto
     && /^data:image\/(?:png|jpeg);base64,/i.test(resume.personal.photo);
   const pageMarginPoints = resume.design.pageMargin * MILLIMETRES_TO_POINTS;
@@ -220,7 +226,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
         <View style={templateStyles.header}>
           <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
           <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
-          <View style={styles.contacts}>
+          <View style={[styles.contacts, templateStyles.contacts]}>
             {contacts.map((contact, index) => (
               <PdfContact
                 key={`${contact.value}-${index}`}
@@ -243,14 +249,16 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
           )}
         </View>
 
-        {sections.map((section) => {
+        {sections.map((section, sectionIndex) => {
           const simpleItems = section.items.every(
             (item) => !item.subtitle && !item.meta && !item.description && item.bullets.length === 0,
           );
           return (
-            <View style={[styles.section, { marginTop: resume.design.sectionSpacing }]} key={section.id}>
+            <View style={[styles.section, { marginTop: resume.design.sectionSpacing * densityFactor }]} key={section.id}>
               <Text style={templateStyles.sectionTitle} minPresenceAhead={28}>
-                {section.title}
+                {selectedTemplate.sectionStyle === "numbered"
+                  ? `${String(sectionIndex + 1).padStart(2, "0")}  ${section.title}`
+                  : section.title}
               </Text>
               {section.content && (
                 <Text style={styles.summary} orphans={2} widows={2}>{section.content}</Text>
@@ -259,7 +267,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
                 <View style={styles.simpleList}>
                   {section.items.map((item) => (
                     <Text key={item.id} style={[styles.simpleItem, templateStyles.simpleItem]}>
-                      {item.title}
+                      {selectedTemplate.skillStyle === "list" ? `• ${item.title}` : item.title}
                     </Text>
                   ))}
                 </View>
@@ -270,7 +278,7 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
                     item={item}
                     accentColor={resume.design.accentColor}
                     bulletSize={resume.design.bulletSize}
-                    entrySpacing={resume.design.entrySpacing}
+                    entrySpacing={resume.design.entrySpacing * densityFactor}
                     isFirst={index === 0}
                   />
                 ))

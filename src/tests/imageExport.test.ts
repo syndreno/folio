@@ -28,9 +28,13 @@ describe("multi-page image export", () => {
     entryHandle.className = "preview-entry-drag-handle";
     const resumeText = document.createElement("p");
     resumeText.className = "resume-summary";
+    const svgIcon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    const textNode = document.createTextNode("Selectable resume text");
 
     expect(shouldIncludeResumeImageNode(sectionHandle)).toBe(false);
     expect(shouldIncludeResumeImageNode(entryHandle)).toBe(false);
     expect(shouldIncludeResumeImageNode(resumeText)).toBe(true);
+    expect(shouldIncludeResumeImageNode(svgIcon)).toBe(true);
+    expect(shouldIncludeResumeImageNode(textNode)).toBe(true);
   });
 });

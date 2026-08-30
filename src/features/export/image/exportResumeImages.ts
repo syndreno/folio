@@ -9,7 +9,10 @@ const EDITOR_ONLY_PREVIEW_CLASSES = [
   "preview-entry-drag-handle",
 ];
 
-export function shouldIncludeResumeImageNode(node: HTMLElement): boolean {
+export function shouldIncludeResumeImageNode(node: Node): boolean {
+  // html-to-image also visits SVG and text nodes, which do not always expose
+  // HTMLElement.classList. Only editor-owned HTML controls need filtering.
+  if (!(node instanceof HTMLElement)) return true;
   return !EDITOR_ONLY_PREVIEW_CLASSES.some((className) => node.classList.contains(className));
 }
 

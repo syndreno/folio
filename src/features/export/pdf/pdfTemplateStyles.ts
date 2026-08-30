@@ -1,4 +1,7 @@
 import { StyleSheet } from "@react-pdf/renderer";
+import {
+  getResumeTemplate,
+} from "../../../constants/resumeTemplates";
 import type { ResumeDocument } from "../../../domain/resume.types";
 
 const CSS_PIXELS_TO_POINTS = 0.75;
@@ -25,141 +28,161 @@ function mixHexColors(foreground: string, background: string, foregroundRatio: n
 }
 
 export function createPdfTemplateStyles(resume: ResumeDocument) {
+  const template = getResumeTemplate(resume.design.templateId);
   const bodyFont = pdfFontFamily(resume.design.fontFamily);
   const headingFont = pdfFontFamily(resume.design.headingFontFamily);
-  const modernTemplate = resume.design.templateId === "modern";
-  const professionalTemplate = resume.design.templateId === "professional";
-  const showPhoto = professionalTemplate
+  const selectedHeadingFont = template.headingTone === "sans" ? bodyFont : headingFont;
+  const showPhoto = template.supportsPhoto
     && resume.design.showPhoto
     && /^data:image\/(?:png|jpeg);base64,/i.test(resume.personal.photo);
   const subtleRule = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.3);
   const subtleFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.09);
-  const modernHeaderFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.06);
-  const professionalHeaderFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.07);
-  const modernPillBorder = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.38);
+  const headerFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.07);
+  const pillBorder = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.38);
+  const photoSpace = showPhoto
+    ? (28 * MILLIMETRES_TO_POINTS) + (24 * CSS_PIXELS_TO_POINTS)
+    : undefined;
 
-  return StyleSheet.create({
-    header: modernTemplate
-      ? {
+  const header = (() => {
+    const photoSettings = {
+      minHeight: showPhoto ? (28 * MILLIMETRES_TO_POINTS) + 18.75 : undefined,
+      paddingRight: photoSpace,
+    };
+    switch (template.layout) {
+      case "minimal":
+        return { ...photoSettings, paddingBottom: 5.25 };
+      case "centered":
+        return {
+          ...photoSettings,
+          paddingBottom: 9,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+          alignItems: "center" as const,
+        };
+      case "band":
+        return {
+          ...photoSettings,
           paddingTop: 9,
-          paddingRight: 10.5,
+          paddingRight: photoSpace ?? 10.5,
           paddingBottom: 9.75,
           paddingLeft: 10.5,
-          backgroundColor: modernHeaderFill,
+          backgroundColor: headerFill,
           borderTopWidth: 3,
           borderTopColor: resume.design.accentColor,
-        }
-      : professionalTemplate
-        ? {
-            minHeight: showPhoto ? (28 * MILLIMETRES_TO_POINTS) + 18.75 : undefined,
-            paddingTop: 9,
-            paddingRight: showPhoto
-              ? (28 * MILLIMETRES_TO_POINTS) + (24 * CSS_PIXELS_TO_POINTS)
-              : 10.5,
-            paddingBottom: 9.75,
-            paddingLeft: 10.5,
-            backgroundColor: professionalHeaderFill,
-            borderTopWidth: 2.25,
-            borderTopColor: resume.design.accentColor,
-          }
-        : {
-            paddingBottom: 9,
-            borderBottomWidth: 1.5,
-            borderBottomColor: resume.design.accentColor,
-          },
-    name: modernTemplate
-      ? {
-          color: resume.design.accentColor,
-          fontFamily: bodyFont,
-          fontSize: 25,
-          fontWeight: 800,
-          lineHeight: 1.05,
-          letterSpacing: -0.75,
-        }
-      : {
-          color: resume.design.textColor,
-          fontFamily: headingFont,
-          fontSize: 25,
-          fontWeight: professionalTemplate ? 700 : 500,
-          lineHeight: 1.05,
-          letterSpacing: -0.5,
-        },
-    role: modernTemplate
-      ? {
-          marginTop: 3.75,
-          marginBottom: 6,
-          color: resume.design.textColor,
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: 0.9,
-          textTransform: "uppercase",
-        }
-      : professionalTemplate
-        ? {
-            marginTop: 3,
-            marginBottom: 6,
-            color: resume.design.accentColor,
-            fontSize: 10.5,
-            fontWeight: 700,
-            letterSpacing: 0.68,
-            textTransform: "uppercase",
-          }
-        : {
-            marginTop: 3.75,
-            marginBottom: 6,
-            color: resume.design.accentColor,
-            fontSize: 11,
-            fontWeight: 700,
-            letterSpacing: 0.44,
-          },
-    sectionTitle: modernTemplate
-      ? {
-          marginBottom: 5.25,
-          paddingTop: 1.5,
-          paddingBottom: 1.5,
-          paddingLeft: 6,
-          color: resume.design.accentColor,
-          borderLeftWidth: 2.25,
+        };
+      case "rail":
+        return {
+          ...photoSettings,
+          paddingBottom: 8.25,
+          paddingLeft: 9.75,
+          borderLeftWidth: 3,
           borderLeftColor: resume.design.accentColor,
-          fontFamily: bodyFont,
-          fontSize: 9.5,
-          fontWeight: 700,
-          lineHeight: 1.1,
-          letterSpacing: 0.95,
-          textTransform: "uppercase",
-        }
-      : {
-          marginBottom: 5.25,
-          paddingBottom: 2.25,
-          color: resume.design.accentColor,
+        };
+      case "boxed":
+        return {
+          ...photoSettings,
+          paddingTop: 8.25,
+          paddingRight: photoSpace ?? 9.75,
+          paddingBottom: 8.25,
+          paddingLeft: 9.75,
+          borderWidth: 0.75,
+          borderColor: subtleRule,
+        };
+      case "split":
+        return {
+          ...photoSettings,
+          paddingBottom: 9,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "editorial":
+        return {
+          ...photoSettings,
+          paddingBottom: 9,
           borderBottomWidth: 0.75,
           borderBottomColor: subtleRule,
-          fontFamily: headingFont,
-          fontSize: resume.design.headingSize,
-          fontWeight: 700,
-          lineHeight: 1.1,
-          letterSpacing: professionalTemplate
-            ? resume.design.headingSize * 0.08
-            : resume.design.headingSize * 0.12,
-          textTransform: "uppercase",
-        },
-    simpleItem: modernTemplate
-      ? {
-          color: resume.design.textColor,
-          backgroundColor: resume.design.paperColor,
-          borderWidth: 0.75,
-          borderColor: modernPillBorder,
-          borderRadius: 7.5,
-        }
-      : {
-          color: resume.design.textColor,
-          backgroundColor: subtleFill,
-          borderRadius: 2.25,
-        },
+        };
+      case "executive":
+        return {
+          ...photoSettings,
+          paddingTop: 7.5,
+          paddingBottom: 7.5,
+          borderTopWidth: 1.5,
+          borderTopColor: resume.design.accentColor,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+        };
+      default:
+        return {
+          ...photoSettings,
+          paddingBottom: 9,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+        };
+    }
+  })();
+
+  const sectionTitle = (() => {
+    const base = {
+      marginBottom: 5.25,
+      color: resume.design.accentColor,
+      fontFamily: selectedHeadingFont,
+      fontSize: resume.design.headingSize,
+      fontWeight: 700 as const,
+      lineHeight: 1.1,
+      letterSpacing: resume.design.headingSize * 0.09,
+      textTransform: "uppercase" as const,
+    };
+    switch (template.sectionStyle) {
+      case "plain": return base;
+      case "left-rule": return { ...base, paddingTop: 1.5, paddingBottom: 1.5, paddingLeft: 6, borderLeftWidth: 2.25, borderLeftColor: resume.design.accentColor };
+      case "band": return { ...base, paddingTop: 3, paddingRight: 5.25, paddingBottom: 3, paddingLeft: 5.25, backgroundColor: subtleFill };
+      case "double-rule": return { ...base, paddingTop: 3, paddingBottom: 3, borderTopWidth: 0.75, borderTopColor: resume.design.accentColor, borderBottomWidth: 0.75, borderBottomColor: resume.design.accentColor };
+      case "label": return { ...base, alignSelf: "flex-start" as const, paddingTop: 3, paddingRight: 6, paddingBottom: 3, paddingLeft: 6, color: resume.design.paperColor, backgroundColor: resume.design.accentColor };
+      case "boxed": return { ...base, paddingTop: 3, paddingRight: 5.25, paddingBottom: 3, paddingLeft: 5.25, borderWidth: 0.75, borderColor: subtleRule };
+      case "numbered": return { ...base, paddingBottom: 2.25, borderBottomWidth: 0.75, borderBottomColor: subtleRule };
+      default: return { ...base, paddingBottom: 2.25, borderBottomWidth: 0.75, borderBottomColor: subtleRule };
+    }
+  })();
+
+  const nameCentered = template.layout === "centered";
+  const sansDisplay = template.headingTone === "sans" || ["band", "rail", "split"].includes(template.layout);
+  const nameSize = template.layout === "editorial" ? 29 : template.layout === "minimal" ? 23 : 25;
+
+  return StyleSheet.create({
+    header,
+    contacts: nameCentered ? { justifyContent: "center" } : {},
+    name: {
+      color: ["band", "rail", "split"].includes(template.layout)
+        ? resume.design.accentColor
+        : resume.design.textColor,
+      fontFamily: sansDisplay ? bodyFont : selectedHeadingFont,
+      fontSize: nameSize,
+      fontWeight: sansDisplay ? 800 : 500,
+      lineHeight: 1.05,
+      letterSpacing: template.layout === "editorial" ? -0.9 : -0.5,
+      textAlign: nameCentered ? "center" : "left",
+    },
+    role: {
+      marginTop: 3.75,
+      marginBottom: 6,
+      color: template.layout === "band" ? resume.design.textColor : resume.design.accentColor,
+      fontSize: ["band", "editorial", "executive", "split"].includes(template.layout) ? 9.5 : 11,
+      fontWeight: 700,
+      letterSpacing: ["band", "editorial", "executive", "split"].includes(template.layout) ? 0.9 : 0.44,
+      textTransform: ["band", "editorial", "executive", "split"].includes(template.layout) ? "uppercase" : "none",
+      textAlign: nameCentered ? "center" : "left",
+    },
+    sectionTitle,
+    simpleItem: template.skillStyle === "outline"
+      ? { color: resume.design.textColor, backgroundColor: resume.design.paperColor, borderWidth: 0.75, borderColor: pillBorder, borderRadius: 7.5 }
+      : template.skillStyle === "inline" || template.skillStyle === "list"
+        ? { color: resume.design.textColor, backgroundColor: resume.design.paperColor, paddingLeft: 0, paddingRight: 4.5 }
+        : { color: resume.design.textColor, backgroundColor: subtleFill, borderRadius: 2.25 },
     photoFrame: {
       position: "absolute",
-      top: professionalTemplate ? 9 : 0,
-      right: professionalTemplate ? 10.5 : 0,
+      top: ["band", "boxed"].includes(template.layout) ? 9 : 0,
+      right: ["band", "boxed"].includes(template.layout) ? 10.5 : 0,
       width: 28 * MILLIMETRES_TO_POINTS,
       height: 28 * MILLIMETRES_TO_POINTS,
       overflow: "hidden",

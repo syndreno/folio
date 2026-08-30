@@ -34,12 +34,16 @@ test("exports the selected premium template with selectable text and vector cont
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Riley Thompson");
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("radio", { name: /Modern ATS/i }).click();
+  await page.getByRole("tab", { name: /Premium 18/i }).click();
+  await page.getByRole("radio", { name: /Pinnacle/i }).click();
   await page.getByRole("button", { name: "Contemporary" }).click();
   await page.getByRole("button", { name: "Email icon picker" }).click();
   await page.getByRole("searchbox", { name: "Search Email icons" }).fill("paper plane");
   await page.getByRole("option", { name: "Use Paper Plane icon for Email", exact: true }).click();
-  await expect(page.locator(".resume-page.template-modern").first()).toBeVisible();
+  await expect(page.locator(".resume-page.template-pinnacle").first()).toHaveAttribute(
+    "data-template-layout",
+    "executive",
+  );
   await expect(page.locator(".resume-contact .contact-icon").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Export", exact: true }).click();
@@ -66,4 +70,34 @@ test("exports the selected premium template with selectable text and vector cont
   expect(operators.fnArray.filter((operator) => operator === OPS.constructPath).length)
     .toBeGreaterThan(3);
   await loadingTask.destroy();
+});
+
+test("exports a premium visual layout to DOCX, PNG, and JPEG", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/");
+  await page.getByRole("button", { name: /Create a new resume/i }).click();
+  await page.getByLabel("Full name").fill("Casey Stone");
+  await page.getByRole("button", { name: "Design", exact: true }).click();
+  await page.getByRole("tab", { name: /Premium 18/i }).click();
+  await page.getByRole("radio", { name: /^Editorial premium/i }).click();
+  await expect(page.locator(".resume-page.template-editorial").first()).toHaveAttribute(
+    "data-template-layout",
+    "editorial",
+  );
+
+  const exportFormat = async (buttonName: RegExp, expectedFileName: string) => {
+    await page.getByRole("button", { name: "Export", exact: true }).click();
+    const downloadPromise = page.waitForEvent("download", { timeout: 30_000 });
+    await page.getByRole("button", { name: buttonName }).click();
+    const download = await downloadPromise.catch(async (error: unknown) => {
+      const status = await page.locator(".message-bar strong").textContent({ timeout: 1_000 })
+        .catch(() => "No status message");
+      throw new Error(`${error instanceof Error ? error.message : String(error)} Status: ${status}`);
+    });
+    expect(download.suggestedFilename()).toBe(expectedFileName);
+  };
+
+  await exportFormat(/Word DOCX/i, "casey-stone-resume.docx");
+  await exportFormat(/PNG pages/i, "casey-stone-resume-page-1.png");
+  await exportFormat(/JPEG pages/i, "casey-stone-resume-page-1.jpg");
 });
