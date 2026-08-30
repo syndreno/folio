@@ -11,7 +11,8 @@ test("creates, customizes, checks, and downloads a portable resume", async ({ pa
   await expect(page.locator(".resume-header h1").first()).toHaveText("Morgan Rivera");
 
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("radio", { name: /Modern ATS/i }).click();
+  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
+  await page.getByRole("button", { name: "Use Modern ATS", exact: true }).click();
   await expect(page.locator(".resume-page.template-modern").first()).toBeVisible();
 
   await page.getByRole("button", { name: "ATS", exact: true }).click();
@@ -34,8 +35,8 @@ test("exports the selected premium template with selectable text and vector cont
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Riley Thompson");
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("tab", { name: /Premium 18/i }).click();
-  await page.getByRole("radio", { name: /Pinnacle/i }).click();
+  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
+  await page.getByRole("button", { name: "Use Pinnacle", exact: true }).click();
   await page.getByRole("button", { name: "Contemporary" }).click();
   await page.getByRole("button", { name: "Email icon picker" }).click();
   await page.getByRole("searchbox", { name: "Search Email icons" }).fill("paper plane");
@@ -78,8 +79,8 @@ test("exports a premium visual layout to DOCX, PNG, and JPEG", async ({ page }) 
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Casey Stone");
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("tab", { name: /Premium 18/i }).click();
-  await page.getByRole("radio", { name: /^Editorial premium/i }).click();
+  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
+  await page.getByRole("button", { name: "Use Editorial", exact: true }).click();
   await expect(page.locator(".resume-page.template-editorial").first()).toHaveAttribute(
     "data-template-layout",
     "editorial",

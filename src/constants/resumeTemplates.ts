@@ -8,7 +8,13 @@ export type TemplateLayout =
   | "boxed"
   | "split"
   | "editorial"
-  | "executive";
+  | "executive"
+  | "functional"
+  | "student"
+  | "tech"
+  | "portfolio"
+  | "healthcare"
+  | "professional";
 export type TemplateSectionStyle =
   | "rule"
   | "plain"
@@ -45,23 +51,23 @@ export const TEMPLATE_CATALOG = [
   { id: "civic", name: "Civic", category: "basic", tagline: "Centered formality for public-service roles.", atsRating: "optimized", supportsPhoto: false, layout: "centered", sectionStyle: "double-rule", skillStyle: "list", density: "balanced", headingTone: "serif" },
   { id: "ledger", name: "Ledger", category: "basic", tagline: "Structured labels with accounting precision.", atsRating: "optimized", supportsPhoto: false, layout: "classic", sectionStyle: "label", skillStyle: "outline", density: "compact", headingTone: "serif" },
   { id: "concise", name: "Concise", category: "basic", tagline: "Space-efficient for experienced candidates.", atsRating: "optimized", supportsPhoto: false, layout: "minimal", sectionStyle: "plain", skillStyle: "inline", density: "compact", headingTone: "sans" },
-  { id: "monochrome", name: "Monochrome", category: "basic", tagline: "Restrained editorial black-and-white structure.", atsRating: "optimized", supportsPhoto: false, layout: "editorial", sectionStyle: "rule", skillStyle: "list", density: "balanced", headingTone: "serif" },
+  { id: "monochrome", name: "Monochrome", category: "basic", tagline: "Restrained editorial black-and-white structure.", atsRating: "compatible", supportsPhoto: false, layout: "editorial", sectionStyle: "rule", skillStyle: "list", density: "balanced", headingTone: "serif" },
   { id: "standard", name: "Standard", category: "basic", tagline: "A familiar recruiter-first document pattern.", atsRating: "optimized", supportsPhoto: false, layout: "classic", sectionStyle: "plain", skillStyle: "list", density: "balanced", headingTone: "sans" },
   { id: "clearpath", name: "Clearpath", category: "basic", tagline: "Strong left markers guide the reading path.", atsRating: "optimized", supportsPhoto: false, layout: "rail", sectionStyle: "left-rule", skillStyle: "inline", density: "balanced", headingTone: "sans" },
   { id: "baseline", name: "Baseline", category: "basic", tagline: "Compact rules and consistent rhythm.", atsRating: "optimized", supportsPhoto: false, layout: "classic", sectionStyle: "double-rule", skillStyle: "outline", density: "compact", headingTone: "mixed" },
-  { id: "scholar", name: "Scholar", category: "basic", tagline: "Academic typography with generous reading space.", atsRating: "optimized", supportsPhoto: false, layout: "editorial", sectionStyle: "plain", skillStyle: "list", density: "airy", headingTone: "serif" },
-  { id: "graduate", name: "Graduate", category: "basic", tagline: "Friendly hierarchy for early-career resumes.", atsRating: "optimized", supportsPhoto: false, layout: "centered", sectionStyle: "rule", skillStyle: "chips", density: "airy", headingTone: "sans" },
+  { id: "scholar", name: "Scholar", category: "basic", tagline: "Academic typography with generous reading space.", atsRating: "compatible", supportsPhoto: false, layout: "editorial", sectionStyle: "plain", skillStyle: "list", density: "airy", headingTone: "serif" },
+  { id: "graduate", name: "Graduate", category: "basic", tagline: "Education-first hierarchy for early-career resumes.", atsRating: "optimized", supportsPhoto: false, layout: "student", sectionStyle: "rule", skillStyle: "chips", density: "airy", headingTone: "sans" },
   { id: "service", name: "Service", category: "basic", tagline: "Direct labels for customer-facing experience.", atsRating: "optimized", supportsPhoto: false, layout: "boxed", sectionStyle: "label", skillStyle: "list", density: "balanced", headingTone: "sans" },
   { id: "retail", name: "Retail", category: "basic", tagline: "Energetic bands with simple content flow.", atsRating: "optimized", supportsPhoto: false, layout: "band", sectionStyle: "band", skillStyle: "chips", density: "compact", headingTone: "sans" },
   { id: "hospitality", name: "Hospitality", category: "basic", tagline: "Welcoming centered header and light accents.", atsRating: "optimized", supportsPhoto: false, layout: "centered", sectionStyle: "label", skillStyle: "outline", density: "airy", headingTone: "mixed" },
-  { id: "healthcare-basic", name: "Healthcare", category: "basic", tagline: "Calm clinical structure with clear sections.", atsRating: "optimized", supportsPhoto: false, layout: "rail", sectionStyle: "rule", skillStyle: "list", density: "balanced", headingTone: "sans" },
-  { id: "technician", name: "Technician", category: "basic", tagline: "Dense technical facts with boxed headings.", atsRating: "optimized", supportsPhoto: false, layout: "boxed", sectionStyle: "boxed", skillStyle: "inline", density: "compact", headingTone: "sans" },
+  { id: "healthcare-basic", name: "Healthcare", category: "basic", tagline: "Calm clinical structure for licenses, skills, and experience.", atsRating: "optimized", supportsPhoto: false, layout: "healthcare", sectionStyle: "rule", skillStyle: "list", density: "balanced", headingTone: "sans" },
+  { id: "technician", name: "Technician", category: "basic", tagline: "Technical matrix with compact evidence-led entries.", atsRating: "compatible", supportsPhoto: false, layout: "tech", sectionStyle: "boxed", skillStyle: "inline", density: "compact", headingTone: "sans" },
   { id: "essential", name: "Essential", category: "basic", tagline: "Only the hierarchy a recruiter needs.", atsRating: "optimized", supportsPhoto: false, layout: "minimal", sectionStyle: "left-rule", skillStyle: "outline", density: "airy", headingTone: "mixed" },
 
   { id: "modern", name: "Modern ATS", category: "advanced", tagline: "Contemporary tonal header and accent markers.", atsRating: "optimized", supportsPhoto: false, layout: "band", sectionStyle: "left-rule", skillStyle: "outline", density: "balanced", headingTone: "sans" },
-  { id: "professional", name: "Professional", category: "advanced", tagline: "Polished photo-ready business presentation.", atsRating: "compatible", supportsPhoto: true, layout: "band", sectionStyle: "rule", skillStyle: "chips", density: "balanced", headingTone: "mixed" },
+  { id: "professional", name: "Professional", category: "advanced", tagline: "Photo-ready identity header with a true skills sidebar.", atsRating: "compatible", supportsPhoto: true, layout: "professional", sectionStyle: "rule", skillStyle: "chips", density: "balanced", headingTone: "mixed" },
   { id: "precision", name: "Precision", category: "advanced", tagline: "Exact boxed geometry for analytical roles.", atsRating: "optimized", supportsPhoto: false, layout: "boxed", sectionStyle: "boxed", skillStyle: "outline", density: "compact", headingTone: "sans" },
-  { id: "catalyst", name: "Catalyst", category: "advanced", tagline: "Bold rail and numbered career sections.", atsRating: "compatible", supportsPhoto: false, layout: "rail", sectionStyle: "numbered", skillStyle: "chips", density: "balanced", headingTone: "sans" },
+  { id: "catalyst", name: "Catalyst", category: "advanced", tagline: "Skill-first structure for transferable strengths.", atsRating: "compatible", supportsPhoto: false, layout: "functional", sectionStyle: "numbered", skillStyle: "chips", density: "balanced", headingTone: "sans" },
   { id: "horizon", name: "Horizon", category: "advanced", tagline: "Wide centered identity with airy divisions.", atsRating: "optimized", supportsPhoto: false, layout: "centered", sectionStyle: "band", skillStyle: "outline", density: "airy", headingTone: "sans" },
   { id: "vertex", name: "Vertex", category: "advanced", tagline: "Angular labels and compact technical detail.", atsRating: "compatible", supportsPhoto: false, layout: "split", sectionStyle: "label", skillStyle: "inline", density: "compact", headingTone: "sans" },
   { id: "metro", name: "Metro", category: "advanced", tagline: "Urban blocks with confident section bands.", atsRating: "compatible", supportsPhoto: true, layout: "boxed", sectionStyle: "band", skillStyle: "chips", density: "balanced", headingTone: "sans" },
@@ -69,13 +75,13 @@ export const TEMPLATE_CATALOG = [
   { id: "signal", name: "Signal", category: "advanced", tagline: "High-clarity rail with compact outline skills.", atsRating: "optimized", supportsPhoto: false, layout: "rail", sectionStyle: "double-rule", skillStyle: "outline", density: "compact", headingTone: "mixed" },
   { id: "ascent", name: "Ascent", category: "advanced", tagline: "Progressive numbered sections and open spacing.", atsRating: "compatible", supportsPhoto: false, layout: "minimal", sectionStyle: "numbered", skillStyle: "chips", density: "airy", headingTone: "sans" },
   { id: "framework", name: "Framework", category: "advanced", tagline: "Systematic boxes for engineering leadership.", atsRating: "optimized", supportsPhoto: false, layout: "executive", sectionStyle: "boxed", skillStyle: "inline", density: "compact", headingTone: "mixed" },
-  { id: "portfolio", name: "Portfolio", category: "advanced", tagline: "Expressive title treatment for project work.", atsRating: "compatible", supportsPhoto: true, layout: "editorial", sectionStyle: "band", skillStyle: "outline", density: "balanced", headingTone: "serif" },
-  { id: "product", name: "Product", category: "advanced", tagline: "Balanced product-story hierarchy and labels.", atsRating: "optimized", supportsPhoto: false, layout: "split", sectionStyle: "rule", skillStyle: "chips", density: "balanced", headingTone: "sans" },
-  { id: "engineer", name: "Engineer", category: "advanced", tagline: "Dense evidence-led layout for technical depth.", atsRating: "optimized", supportsPhoto: false, layout: "rail", sectionStyle: "boxed", skillStyle: "inline", density: "compact", headingTone: "sans" },
+  { id: "portfolio", name: "Portfolio", category: "advanced", tagline: "Project-led case-study composition for portfolio careers.", atsRating: "compatible", supportsPhoto: true, layout: "portfolio", sectionStyle: "band", skillStyle: "outline", density: "balanced", headingTone: "serif" },
+  { id: "product", name: "Product", category: "advanced", tagline: "Balanced product-story hierarchy and labels.", atsRating: "compatible", supportsPhoto: false, layout: "split", sectionStyle: "rule", skillStyle: "chips", density: "balanced", headingTone: "sans" },
+  { id: "engineer", name: "Engineer", category: "advanced", tagline: "Technical matrix and timeline for engineering depth.", atsRating: "compatible", supportsPhoto: false, layout: "tech", sectionStyle: "boxed", skillStyle: "inline", density: "compact", headingTone: "sans" },
   { id: "analyst", name: "Analyst", category: "advanced", tagline: "Measured typography and data-friendly spacing.", atsRating: "optimized", supportsPhoto: false, layout: "classic", sectionStyle: "numbered", skillStyle: "outline", density: "compact", headingTone: "mixed" },
   { id: "marketing", name: "Marketing", category: "advanced", tagline: "Branded header with energetic skill chips.", atsRating: "compatible", supportsPhoto: true, layout: "band", sectionStyle: "label", skillStyle: "chips", density: "airy", headingTone: "sans" },
   { id: "consultant", name: "Consultant", category: "advanced", tagline: "Executive structure with concise evidence.", atsRating: "optimized", supportsPhoto: false, layout: "executive", sectionStyle: "rule", skillStyle: "list", density: "balanced", headingTone: "serif" },
-  { id: "balanced", name: "Balanced", category: "advanced", tagline: "Split identity and evenly weighted sections.", atsRating: "optimized", supportsPhoto: false, layout: "split", sectionStyle: "double-rule", skillStyle: "outline", density: "airy", headingTone: "mixed" },
+  { id: "balanced", name: "Balanced", category: "advanced", tagline: "Split identity and evenly weighted sections.", atsRating: "compatible", supportsPhoto: false, layout: "split", sectionStyle: "double-rule", skillStyle: "outline", density: "airy", headingTone: "mixed" },
 
   { id: "executive", name: "Executive", category: "premium", tagline: "Boardroom authority with double-rule structure.", atsRating: "compatible", supportsPhoto: true, layout: "executive", sectionStyle: "double-rule", skillStyle: "inline", density: "airy", headingTone: "serif" },
   { id: "aurora", name: "Aurora", category: "premium", tagline: "Luminous banding and elegant label rhythm.", atsRating: "compatible", supportsPhoto: true, layout: "band", sectionStyle: "label", skillStyle: "outline", density: "airy", headingTone: "mixed" },

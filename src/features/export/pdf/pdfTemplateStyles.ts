@@ -112,6 +112,61 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
           borderBottomWidth: 1.5,
           borderBottomColor: resume.design.accentColor,
         };
+      case "functional":
+        return {
+          ...photoSettings,
+          paddingTop: 8.25,
+          paddingRight: photoSpace ?? 10.5,
+          paddingBottom: 8.25,
+          paddingLeft: 10.5,
+          backgroundColor: subtleFill,
+          borderLeftWidth: 3.75,
+          borderLeftColor: resume.design.accentColor,
+        };
+      case "student":
+        return {
+          ...photoSettings,
+          paddingTop: 9,
+          paddingRight: photoSpace ?? 9,
+          paddingBottom: 9,
+          paddingLeft: 9,
+          backgroundColor: subtleFill,
+          alignItems: "center" as const,
+        };
+      case "tech":
+        return {
+          ...photoSettings,
+          paddingTop: 9.75,
+          paddingRight: photoSpace ?? 11.25,
+          paddingBottom: 9.75,
+          paddingLeft: 11.25,
+          backgroundColor: mixHexColors(resume.design.accentColor, "#14201C", 0.74),
+          borderBottomWidth: 3,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "portfolio":
+        return {
+          ...photoSettings,
+          paddingBottom: 9.75,
+          borderBottomWidth: 3.75,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "healthcare":
+        return {
+          ...photoSettings,
+          paddingBottom: 8.25,
+          borderBottomWidth: 2.25,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "professional":
+        return {
+          ...photoSettings,
+          minHeight: showPhoto ? (31 * MILLIMETRES_TO_POINTS) + 15 : undefined,
+          paddingRight: showPhoto ? (31 * MILLIMETRES_TO_POINTS) + 18 : 0,
+          paddingBottom: 9.75,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+        };
       default:
         return {
           ...photoSettings,
@@ -145,20 +200,63 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
     }
   })();
 
-  const nameCentered = template.layout === "centered";
-  const sansDisplay = template.headingTone === "sans" || ["band", "rail", "split"].includes(template.layout);
-  const nameSize = template.layout === "editorial" ? 29 : template.layout === "minimal" ? 23 : 25;
+  const nameCentered = template.layout === "centered" || template.layout === "student";
+  const sansDisplay = template.headingTone === "sans" || ["band", "rail", "split", "functional", "tech", "healthcare"].includes(template.layout);
+  const nameSize = ["editorial", "portfolio", "professional"].includes(template.layout)
+    ? 29
+    : template.layout === "minimal"
+      ? 23
+      : 25;
+  const sectionComposition = (() => {
+    if (template.layout === "split") {
+      return {
+        section: { flexDirection: "row" as const, alignItems: "flex-start" as const, gap: 19.8 },
+        title: {
+          ...sectionTitle,
+          width: 87.8,
+          flexShrink: 0,
+          paddingRight: 6,
+          paddingBottom: 4.5,
+          borderRightWidth: 1.5,
+          borderRightColor: resume.design.accentColor,
+          borderBottomWidth: 0,
+        },
+        content: { flexGrow: 1, flexBasis: 0 },
+      };
+    }
+    if (template.layout === "editorial") {
+      return {
+        section: { flexDirection: "row" as const, alignItems: "flex-start" as const, gap: 17 },
+        title: {
+          ...sectionTitle,
+          width: 68,
+          flexShrink: 0,
+          paddingBottom: 5.25,
+          borderBottomWidth: 0.75,
+          borderBottomColor: resume.design.accentColor,
+        },
+        content: { flexGrow: 1, flexBasis: 0 },
+      };
+    }
+    return {
+      section: {},
+      title: sectionTitle,
+      content: {},
+    };
+  })();
 
   return StyleSheet.create({
     header,
     contacts: nameCentered ? { justifyContent: "center" } : {},
     name: {
-      color: ["band", "rail", "split"].includes(template.layout)
-        ? resume.design.accentColor
-        : resume.design.textColor,
+      color: template.layout === "tech"
+        ? "#FFFFFF"
+        : ["band", "rail", "split", "functional", "healthcare", "professional"].includes(template.layout)
+          ? resume.design.accentColor
+          : resume.design.textColor,
       fontFamily: sansDisplay ? bodyFont : selectedHeadingFont,
       fontSize: nameSize,
-      fontWeight: sansDisplay ? 800 : 500,
+      fontWeight: template.layout === "professional" ? 400 : sansDisplay ? 800 : 500,
       lineHeight: 1.05,
       letterSpacing: template.layout === "editorial" ? -0.9 : -0.5,
       textAlign: nameCentered ? "center" : "left",
@@ -166,14 +264,46 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
     role: {
       marginTop: 3.75,
       marginBottom: 6,
-      color: template.layout === "band" ? resume.design.textColor : resume.design.accentColor,
-      fontSize: ["band", "editorial", "executive", "split"].includes(template.layout) ? 9.5 : 11,
+      color: template.layout === "tech"
+        ? "#FFFFFF"
+        : template.layout === "band" ? resume.design.textColor : resume.design.accentColor,
+      fontSize: ["band", "editorial", "executive", "split", "functional", "student", "tech", "portfolio"].includes(template.layout) ? 9.5 : template.layout === "professional" ? 12 : 11,
       fontWeight: 700,
-      letterSpacing: ["band", "editorial", "executive", "split"].includes(template.layout) ? 0.9 : 0.44,
-      textTransform: ["band", "editorial", "executive", "split"].includes(template.layout) ? "uppercase" : "none",
+      letterSpacing: ["band", "editorial", "executive", "split", "student", "tech", "portfolio"].includes(template.layout) ? 0.9 : 0.44,
+      textTransform: ["band", "editorial", "executive", "split", "student", "tech", "portfolio"].includes(template.layout) ? "uppercase" : "none",
       textAlign: nameCentered ? "center" : "left",
     },
-    sectionTitle,
+    section: sectionComposition.section,
+    sectionTitle: sectionComposition.title,
+    sectionContent: sectionComposition.content,
+    highlightedSectionContent: {
+      paddingTop: 6,
+      paddingRight: 7.5,
+      paddingBottom: 6,
+      paddingLeft: 7.5,
+      backgroundColor: subtleFill,
+      borderLeftWidth: 2.25,
+      borderLeftColor: resume.design.accentColor,
+    },
+    centeredSectionTitle: {
+      ...sectionComposition.title,
+      paddingTop: 3.75,
+      paddingBottom: 3.75,
+      backgroundColor: subtleFill,
+      borderBottomWidth: 0,
+      textAlign: "center" as const,
+    },
+    summary: template.layout === "executive"
+      ? {
+          paddingTop: 6.75,
+          paddingRight: 9,
+          paddingBottom: 6.75,
+          paddingLeft: 9,
+          backgroundColor: subtleFill,
+          borderLeftWidth: 2.25,
+          borderLeftColor: resume.design.accentColor,
+        }
+      : {},
     simpleItem: template.skillStyle === "outline"
       ? { color: resume.design.textColor, backgroundColor: resume.design.paperColor, borderWidth: 0.75, borderColor: pillBorder, borderRadius: 7.5 }
       : template.skillStyle === "inline" || template.skillStyle === "list"
@@ -183,14 +313,14 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
       position: "absolute",
       top: ["band", "boxed"].includes(template.layout) ? 9 : 0,
       right: ["band", "boxed"].includes(template.layout) ? 10.5 : 0,
-      width: 28 * MILLIMETRES_TO_POINTS,
-      height: 28 * MILLIMETRES_TO_POINTS,
+      width: (template.layout === "professional" ? 31 : 28) * MILLIMETRES_TO_POINTS,
+      height: (template.layout === "professional" ? 31 : 28) * MILLIMETRES_TO_POINTS,
       overflow: "hidden",
       borderWidth: 1.5,
       borderColor: resume.design.accentColor,
       borderRadius:
         resume.design.photoShape === "circle"
-          ? 14 * MILLIMETRES_TO_POINTS
+          ? (template.layout === "professional" ? 15.5 : 14) * MILLIMETRES_TO_POINTS
           : resume.design.photoShape === "rounded"
             ? 5 * MILLIMETRES_TO_POINTS
             : 0,

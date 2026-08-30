@@ -52,11 +52,14 @@ import {
   saveResumeDraft,
   type ResumeDraft,
 } from "../services/resumeDraftStore";
+import { SiteFooter } from "../components/SiteFooter";
+import { TemplateCatalogPage } from "../features/templates/TemplateCatalogPage";
 
 type EditorTab = "content" | "design" | "ats";
 type MobileView = "editor" | "preview";
 type DesktopPaneLayout = "both" | "editor" | "preview";
 type ExportFormat = "pdf" | "docx" | "png" | "jpeg";
+type ApplicationView = "home" | "templates" | "builder";
 
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
   accentColor: "#245B4E",
@@ -83,29 +86,6 @@ const AtsPanel = lazy(() =>
 const DesignPanel = lazy(() =>
   import("../features/design/DesignPanel").then((module) => ({ default: module.DesignPanel })),
 );
-
-function SiteFooter({ compact = false }: { compact?: boolean }) {
-  return (
-    <footer className={compact ? "site-footer compact-footer" : "site-footer"}>
-      <div className="footer-brand">
-        <span className="brand-mark">F</span>
-        <div>
-          <strong>Folio</strong>
-          <span>Your resume stays yours.</span>
-        </div>
-      </div>
-      <nav aria-label="Footer links">
-        <a href={`${import.meta.env.BASE_URL}examples/resume-template.md`} download>
-          Markdown template
-        </a>
-        <a href="https://fontawesome.com/license/free" target="_blank" rel="noopener noreferrer">
-          Font Awesome Free
-        </a>
-      </nav>
-      <p>Resume content is processed locally in your browser.</p>
-    </footer>
-  );
-}
 
 function readWorkspaceSettings(): WorkspaceSettings {
   try {
@@ -149,6 +129,7 @@ function readWorkspaceSettings(): WorkspaceSettings {
 
 function StartScreen({
   onCreate,
+  onBrowseTemplates,
   onLoadExample,
   onUpload,
   workspace,
@@ -162,6 +143,7 @@ function StartScreen({
   onDeleteDraft,
 }: {
   onCreate: () => void;
+  onBrowseTemplates: () => void;
   onLoadExample: () => void;
   onUpload: (file: File) => void;
   workspace: WorkspaceSettings;
@@ -202,6 +184,9 @@ function StartScreen({
             </button>
             <button className="secondary-button large" type="button" onClick={() => inputRef.current?.click()}>
               Upload Markdown
+            </button>
+            <button className="secondary-button large" type="button" onClick={onBrowseTemplates}>
+              Browse templates
             </button>
             <input
               ref={inputRef}
@@ -290,6 +275,7 @@ export function App() {
     undoResume,
     redoResume,
   } = useResumeHistory();
+  const [applicationView, setApplicationView] = useState<ApplicationView>("home");
   const [activeTab, setActiveTab] = useState<EditorTab>("content");
   const [mobileView, setMobileView] = useState<MobileView>("editor");
   const [warnings, setWarnings] = useState<string[]>([]);
@@ -461,6 +447,7 @@ export function App() {
     setWarnings(result.warnings);
     setMessage(fileName ? `${fileName} was imported.` : "Example resume loaded.");
     setDesktopPaneLayout("both");
+    setApplicationView("builder");
   };
 
   const handleUpload = async (file: File) => {
@@ -488,6 +475,67 @@ export function App() {
       setBusy(false);
     }
   };
+
+  const workspaceStyle = {
+    "--ui-accent": workspace.accentColor,
+    "--ui-font": workspace.fontFamily,
+    "--ui-letter-spacing": `${workspace.letterSpacing}px`,
+    "--ui-line-height": workspace.lineHeight,
+  } as CSSProperties;
+
+  if (applicationView === "templates") {
+    return (
+      <div
+        className="app template-catalog-app"
+        data-theme={workspace.themeMode}
+        data-density={workspace.density}
+        data-reduce-motion={workspace.reduceMotion}
+        style={workspaceStyle}
+      >
+        <TemplateCatalogPage
+          selectedTemplateId={resume?.design.templateId ?? "classic"}
+          hasOpenResume={Boolean(resume)}
+          onBack={() => setApplicationView(resume ? "builder" : "home")}
+          onHome={() => {
+            if (resume) {
+              setApplicationView("builder");
+              setShowHomeDialog(true);
+            } else {
+              setApplicationView("home");
+            }
+          }}
+          onUseTemplate={(templateId) => {
+            markdownIsCurrentRef.current = false;
+            if (resume) {
+              updateResumeHistory(
+                (current) => ({
+                  ...current,
+                  design: { ...current.design, templateId },
+                }),
+                "design:templateId",
+              );
+            } else {
+              const blankResume = createBlankResume();
+              loadResume({
+                ...blankResume,
+                design: { ...blankResume.design, templateId },
+              });
+              setWarnings([]);
+            }
+            setActiveTab("design");
+            setDesktopPaneLayout("both");
+            setApplicationView("builder");
+          }}
+          headerActions={(
+            <WorkspaceCustomizer
+              workspace={workspace}
+              onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
+            />
+          )}
+        />
+      </div>
+    );
+  }
 
   if (!resume) {
     return (
@@ -519,7 +567,9 @@ export function App() {
             loadResume(createBlankResume());
             setWarnings([]);
             setDesktopPaneLayout("both");
+            setApplicationView("builder");
           }}
+          onBrowseTemplates={() => setApplicationView("templates")}
           onLoadExample={loadExample}
           onUpload={handleUpload}
           workspace={workspace}
@@ -537,6 +587,7 @@ export function App() {
             setWarnings(result.warnings);
             setMessage("Local draft restored.");
             setDesktopPaneLayout("both");
+            setApplicationView("builder");
           }}
           onDeleteDraft={() => {
             void deleteResumeDraft()
@@ -781,12 +832,6 @@ export function App() {
     });
   };
 
-  const workspaceStyle = {
-    "--ui-accent": workspace.accentColor,
-    "--ui-font": workspace.fontFamily,
-    "--ui-letter-spacing": `${workspace.letterSpacing}px`,
-    "--ui-line-height": workspace.lineHeight,
-  } as CSSProperties;
   const SelectedTemplate = TEMPLATE_REGISTRY[resume.design.templateId].component;
 
   return (
@@ -852,6 +897,7 @@ export function App() {
                 onClick={() => {
                   setShowHomeDialog(false);
                   loadResume(null);
+                  setApplicationView("home");
                   setWarnings([]);
                   setMessage("");
                   setDesktopPaneLayout("both");
@@ -1236,6 +1282,7 @@ export function App() {
                 <DesignPanel
                   design={resume.design}
                   photo={resume.personal.photo}
+                  onBrowseTemplates={() => setApplicationView("templates")}
                   onPhotoChange={(photo) =>
                     updateResume(
                       (current) => ({

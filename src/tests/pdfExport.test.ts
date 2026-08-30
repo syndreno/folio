@@ -60,10 +60,17 @@ describe("ATS PDF export", () => {
     professional.personal.photo =
       "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
     const professionalStyles = createPdfTemplateStyles(professional);
-    expect(professionalStyles.header).toMatchObject({ borderTopWidth: 3, paddingLeft: 10.5 });
-    expect(professionalStyles.header.minHeight).toBeCloseTo(98.12, 1);
-    expect(professionalStyles.header).toHaveProperty("backgroundColor");
+    expect(professionalStyles.header).toMatchObject({ borderBottomWidth: 1.5 });
+    expect(professionalStyles.header.minHeight).toBeCloseTo(102.87, 1);
+    expect(professionalStyles.name).toMatchObject({ fontSize: 29, fontWeight: 400 });
     expect(professionalStyles.photoFrame).toMatchObject({ borderWidth: 1.5 });
+
+    const product = createBlankResume();
+    product.design.templateId = "product";
+    const productStyles = createPdfTemplateStyles(product);
+    expect(productStyles.section).toMatchObject({ flexDirection: "row" });
+    expect(productStyles.sectionTitle).toMatchObject({ width: 87.8, borderRightWidth: 1.5 });
+    expect(productStyles.sectionContent).toMatchObject({ flexGrow: 1 });
   });
 
   it("renders the Professional photo treatment while keeping resume text selectable", async () => {

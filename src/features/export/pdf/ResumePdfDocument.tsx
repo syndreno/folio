@@ -94,7 +94,86 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     fontSize: 9,
   },
+  twoColumnBody: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 18,
+  },
+  mainColumn: {
+    width: "64%",
+  },
+  sideColumn: {
+    width: "36%",
+    paddingRight: 7.5,
+    paddingBottom: 7.5,
+    paddingLeft: 7.5,
+  },
+  professionalHeader: {
+    minHeight: 94,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 9.75,
+    borderBottomWidth: 1.5,
+  },
+  professionalIdentity: {
+    flexGrow: 1,
+    flexBasis: 0,
+  },
+  professionalContacts: {
+    width: "37%",
+    alignItems: "flex-end",
+    gap: 3.75,
+  },
+  professionalPhotoFrame: {
+    width: 84,
+    height: 84,
+    marginRight: 14,
+    marginLeft: 14,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderRadius: 42,
+  },
+  professionalPhoto: {
+    width: "100%",
+    height: "100%",
+    objectFit: "cover",
+  },
+  techHeader: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderBottomWidth: 3,
+  },
+  techIdentity: {
+    width: "60%",
+    justifyContent: "center",
+    paddingTop: 10,
+    paddingRight: 12,
+    paddingBottom: 10,
+    paddingLeft: 12,
+  },
+  techContacts: {
+    width: "40%",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    gap: 3.75,
+    paddingTop: 9,
+    paddingRight: 10,
+    paddingBottom: 9,
+    paddingLeft: 10,
+  },
 });
+
+function mixHexColors(foreground: string, background: string, foregroundRatio: number): string {
+  const foregroundValue = Number.parseInt(foreground.replace("#", ""), 16);
+  const backgroundValue = Number.parseInt(background.replace("#", ""), 16);
+  const channel = (shift: number) => Math.round(
+    ((foregroundValue >> shift) & 0xff) * foregroundRatio
+      + ((backgroundValue >> shift) & 0xff) * (1 - foregroundRatio),
+  );
+  return `#${[channel(16), channel(8), channel(0)]
+    .map((value) => value.toString(16).padStart(2, "0"))
+    .join("")}`;
+}
 
 function safeWebUrl(value: string): string | undefined {
   try {
@@ -179,6 +258,9 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
   const showPhoto = selectedTemplate.supportsPhoto
     && resume.design.showPhoto
     && /^data:image\/(?:png|jpeg);base64,/i.test(resume.personal.photo);
+  const headerContactColor = selectedTemplate.layout === "tech"
+    ? "#FFFFFF"
+    : resume.design.textColor;
   const pageMarginPoints = resume.design.pageMargin * MILLIMETRES_TO_POINTS;
   const sections = [...resume.sections]
     .filter((section) => section.visible)
@@ -196,6 +278,106 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
       iconUrl: link.iconUrl,
     })),
   ].filter((contact) => contact.value);
+  const sidebarSectionTypes = new Set(["skills", "certifications", "languages", "interests", "awards"]);
+  const usesTwoColumns = ["professional", "functional", "tech"].includes(selectedTemplate.layout);
+  const indexedSections = sections.map((section, sectionIndex) => ({ section, sectionIndex }));
+  const summarySections = usesTwoColumns
+    ? indexedSections.filter(({ section }) => section.type === "summary")
+    : [];
+  const mainSections = indexedSections.filter(({ section }) => (
+    section.type !== "summary" && !sidebarSectionTypes.has(section.type)
+  ));
+  const sidebarSections = indexedSections.filter(({ section }) => (
+    section.type !== "summary" && sidebarSectionTypes.has(section.type)
+  ));
+  const sidebarFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.08);
+
+  const renderContacts = (color: string, iconColor: string) => contacts.map((contact, index) => (
+    <PdfContact
+      key={`${contact.value}-${index}`}
+      value={contact.value}
+      href={contact.href}
+      color={color}
+      accentColor={iconColor}
+      icon={
+        resume.design.showContactIcons
+          ? getFontAwesomeIconDefinition(contact.iconUrl)
+          : undefined
+      }
+    />
+  ));
+
+  const renderSection = (
+    section: ResumeDocument["sections"][number],
+    sectionIndex: number,
+  ) => {
+    const simpleItems = section.items.every(
+      (item) => !item.subtitle && !item.meta && !item.description && item.bullets.length === 0,
+    );
+    const highlightedSection = (
+      selectedTemplate.layout === "functional"
+      && (section.type === "summary" || section.type === "skills")
+    ) || (
+      selectedTemplate.layout === "healthcare"
+      && (section.type === "certifications" || section.type === "skills")
+    );
+    const centeredSection = selectedTemplate.layout === "student"
+      && (section.type === "education" || section.type === "projects");
+    return (
+      <View
+        style={[
+          styles.section,
+          templateStyles.section,
+          { marginTop: resume.design.sectionSpacing * densityFactor },
+        ]}
+        key={section.id}
+      >
+        <Text
+          style={[
+            templateStyles.sectionTitle,
+            centeredSection ? templateStyles.centeredSectionTitle : {},
+          ]}
+          minPresenceAhead={28}
+        >
+          {selectedTemplate.sectionStyle === "numbered"
+            ? `${String(sectionIndex + 1).padStart(2, "0")}  ${section.title}`
+            : section.title}
+        </Text>
+        <View
+          style={[
+            templateStyles.sectionContent,
+            highlightedSection ? templateStyles.highlightedSectionContent : {},
+          ]}
+        >
+          {section.content && (
+            <Text style={[styles.summary, templateStyles.summary]} orphans={2} widows={2}>
+              {section.content}
+            </Text>
+          )}
+          {simpleItems ? (
+            <View style={styles.simpleList}>
+              {section.items.map((item) => (
+                <Text key={item.id} style={[styles.simpleItem, templateStyles.simpleItem]}>
+                  {selectedTemplate.skillStyle === "list" ? `• ${item.title}` : item.title}
+                </Text>
+              ))}
+            </View>
+          ) : (
+            section.items.map((item, index) => (
+              <PdfEntry
+                key={item.id}
+                item={item}
+                accentColor={resume.design.accentColor}
+                bulletSize={resume.design.bulletSize}
+                entrySpacing={resume.design.entrySpacing * densityFactor}
+                isFirst={index === 0}
+              />
+            ))
+          )}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <Document
@@ -223,69 +405,76 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
           },
         ]}
       >
-        <View style={templateStyles.header}>
-          <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
-          <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
-          <View style={[styles.contacts, templateStyles.contacts]}>
-            {contacts.map((contact, index) => (
-              <PdfContact
-                key={`${contact.value}-${index}`}
-                value={contact.value}
-                href={contact.href}
-                color={resume.design.textColor}
-                accentColor={resume.design.accentColor}
-                icon={
-                  resume.design.showContactIcons
-                    ? getFontAwesomeIconDefinition(contact.iconUrl)
-                    : undefined
-                }
-              />
-            ))}
+        {selectedTemplate.layout === "professional" ? (
+          <View style={[styles.professionalHeader, { borderBottomColor: resume.design.accentColor }]}>
+            <View style={styles.professionalIdentity}>
+              <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
+              <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
+            </View>
+            {showPhoto && (
+              <View style={[styles.professionalPhotoFrame, { borderColor: resume.design.accentColor }]}>
+                <Image src={resume.personal.photo} style={styles.professionalPhoto} />
+              </View>
+            )}
+            <View style={styles.professionalContacts}>
+              {renderContacts(resume.design.textColor, resume.design.accentColor)}
+            </View>
           </View>
-          {showPhoto && (
-            <View style={templateStyles.photoFrame}>
-              <Image src={resume.personal.photo} style={templateStyles.photo} />
+        ) : selectedTemplate.layout === "tech" ? (
+          <View style={[styles.techHeader, { borderBottomColor: resume.design.accentColor }]}>
+            <View style={[styles.techIdentity, { backgroundColor: sidebarFill }]}>
+              <Text style={[templateStyles.name, { color: resume.design.textColor }]}>{resume.personal.fullName}</Text>
+              <Text style={[templateStyles.role, { color: resume.design.accentColor }]}>{resume.personal.professionalTitle}</Text>
             </View>
-          )}
-        </View>
+            <View
+              style={[
+                styles.techContacts,
+                { backgroundColor: mixHexColors(resume.design.accentColor, "#14201C", 0.74) },
+              ]}
+            >
+              {renderContacts("#FFFFFF", "#FFFFFF")}
+            </View>
+          </View>
+        ) : (
+          <View style={templateStyles.header}>
+            <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
+            <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
+            <View style={[styles.contacts, templateStyles.contacts]}>
+              {renderContacts(headerContactColor, resume.design.accentColor)}
+            </View>
+            {showPhoto && (
+              <View style={templateStyles.photoFrame}>
+                <Image src={resume.personal.photo} style={templateStyles.photo} />
+              </View>
+            )}
+          </View>
+        )}
 
-        {sections.map((section, sectionIndex) => {
-          const simpleItems = section.items.every(
-            (item) => !item.subtitle && !item.meta && !item.description && item.bullets.length === 0,
-          );
-          return (
-            <View style={[styles.section, { marginTop: resume.design.sectionSpacing * densityFactor }]} key={section.id}>
-              <Text style={templateStyles.sectionTitle} minPresenceAhead={28}>
-                {selectedTemplate.sectionStyle === "numbered"
-                  ? `${String(sectionIndex + 1).padStart(2, "0")}  ${section.title}`
-                  : section.title}
-              </Text>
-              {section.content && (
-                <Text style={styles.summary} orphans={2} widows={2}>{section.content}</Text>
-              )}
-              {simpleItems ? (
-                <View style={styles.simpleList}>
-                  {section.items.map((item) => (
-                    <Text key={item.id} style={[styles.simpleItem, templateStyles.simpleItem]}>
-                      {selectedTemplate.skillStyle === "list" ? `• ${item.title}` : item.title}
-                    </Text>
-                  ))}
+        {usesTwoColumns ? (
+          <>
+            {summarySections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
+            <View style={styles.twoColumnBody} wrap>
+              {selectedTemplate.layout === "functional" && (
+                <View style={[styles.sideColumn, { backgroundColor: sidebarFill }]}>
+                  {sidebarSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
                 </View>
-              ) : (
-                section.items.map((item, index) => (
-                  <PdfEntry
-                    key={item.id}
-                    item={item}
-                    accentColor={resume.design.accentColor}
-                    bulletSize={resume.design.bulletSize}
-                    entrySpacing={resume.design.entrySpacing * densityFactor}
-                    isFirst={index === 0}
-                  />
-                ))
+              )}
+              <View style={styles.mainColumn}>
+                {mainSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
+              </View>
+              {selectedTemplate.layout !== "functional" && (
+                <View
+                  style={[
+                    styles.sideColumn,
+                    { backgroundColor: sidebarFill },
+                  ]}
+                >
+                  {sidebarSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
+                </View>
               )}
             </View>
-          );
-        })}
+          </>
+        ) : sections.map((section, sectionIndex) => renderSection(section, sectionIndex))}
       </Page>
     </Document>
   );

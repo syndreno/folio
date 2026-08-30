@@ -32,7 +32,7 @@ describe("complete template catalog exports", () => {
     }
   }, 60_000);
 
-  it("generates selectable PDF output for all nine layout systems", async () => {
+  it("generates selectable PDF output for all fifteen layout systems", async () => {
     const testedLayouts = new Set<string>();
     for (const template of TEMPLATE_CATALOG) {
       if (testedLayouts.has(template.layout)) continue;
@@ -45,6 +45,6 @@ describe("complete template catalog exports", () => {
       expect(blob.size, template.id).toBeGreaterThan(1_000);
       expect(blob.type, template.id).toBe("application/pdf");
     }
-    expect(testedLayouts.size).toBe(9);
+    expect(testedLayouts.size).toBe(15);
   }, 60_000);
 });

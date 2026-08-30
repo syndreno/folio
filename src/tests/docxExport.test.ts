@@ -68,6 +68,37 @@ describe("DOCX export", () => {
 
     expect(documentXml).toContain("Jamie Chen");
     expect(documentXml).toContain("Profile photo");
+    expect(documentXml?.match(/<w:tbl>/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(documentXml).toContain('w:shd w:fill="');
     expect(mediaFiles).toHaveLength(1);
+  });
+
+  it("preserves the Tech main and sidebar composition as editable Word text", async () => {
+    const resume = createBlankResume();
+    resume.design.templateId = "engineer";
+    resume.personal.fullName = "Avery Engineer";
+
+    const zip = await JSZip.loadAsync(await (await buildResumeDocxBlob(resume)).arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(documentXml).toContain("Avery Engineer");
+    expect(documentXml).toContain("Professional Summary");
+    expect(documentXml).toContain("Skills");
+    expect(documentXml).toContain("<w:tbl>");
+    expect(documentXml).toContain('w:shd w:fill="');
+  });
+
+  it("uses a native editable title rail for split-layout templates", async () => {
+    const resume = createBlankResume();
+    resume.design.templateId = "product";
+    resume.personal.fullName = "Alex Product";
+
+    const zip = await JSZip.loadAsync(await (await buildResumeDocxBlob(resume)).arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+
+    expect(documentXml).toContain("Alex Product");
+    expect(documentXml).toContain("Professional Summary");
+    expect(documentXml).toContain("<w:tbl>");
+    expect(documentXml).toContain("w:tblW");
   });
 });

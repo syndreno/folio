@@ -1,5 +1,3 @@
-import { useMemo, useState } from "react";
-import type { TemplateCategory } from "../../constants/resumeTemplates";
 import {
   ATS_SAFE_FONTS,
   DEFAULT_ACCENT_COLOR,
@@ -10,6 +8,7 @@ import type { ResumeDesignSettings } from "../../domain/resume.types";
 import { contrastRatio } from "../../utils/color";
 import { ContactIconControls } from "./ContactIconControls";
 import { TEMPLATE_DEFINITIONS } from "../templates/registry";
+import { TemplateMiniature } from "../templates/TemplateMiniature";
 import { PhotoControls } from "../photo/PhotoControls";
 
 interface DesignPanelProps {
@@ -17,6 +16,7 @@ interface DesignPanelProps {
   onDesignChange: (patch: Partial<ResumeDesignSettings>) => void;
   photo: string;
   onPhotoChange: (photo: string) => void;
+  onBrowseTemplates: () => void;
 }
 
 const COLOR_PRESETS = ["#1F4E79", "#2F6FED", "#176B55", "#6C4AB6", "#8A3B2E", "#333333"];
@@ -41,34 +41,6 @@ const TYPOGRAPHY_PRESETS = [
     headingFontFamily: "Georgia",
   },
 ] as const;
-
-type TemplateFilter = "all" | TemplateCategory;
-
-const TEMPLATE_FILTERS: Array<{ id: TemplateFilter; label: string }> = [
-  { id: "all", label: "All" },
-  { id: "basic", label: "Basic" },
-  { id: "advanced", label: "Advanced" },
-  { id: "premium", label: "Premium" },
-];
-
-function TemplateMiniature({ template }: { template: (typeof TEMPLATE_DEFINITIONS)[number] }) {
-  return (
-    <span
-      className="template-miniature"
-      data-layout={template.layout}
-      data-section-style={template.sectionStyle}
-      data-skill-style={template.skillStyle}
-      data-density={template.density}
-      aria-hidden="true"
-    >
-      <span className="mini-header"><b /><i /><em /></span>
-      <span className="mini-contact"><i /><i /><i /></span>
-      <span className="mini-section"><b /><i /><i /></span>
-      <span className="mini-section mini-section-short"><b /><i /><i /></span>
-      {template.supportsPhoto && <span className="mini-photo" />}
-    </span>
-  );
-}
 
 function ColorControl({
   id,
@@ -105,20 +77,13 @@ export function DesignPanel({
   onDesignChange,
   photo,
   onPhotoChange,
+  onBrowseTemplates,
 }: DesignPanelProps) {
-  const [templateFilter, setTemplateFilter] = useState<TemplateFilter>("all");
-  const [templateSearch, setTemplateSearch] = useState("");
   const textContrast = contrastRatio(design.textColor, design.paperColor);
   const accentContrast = contrastRatio(design.accentColor, design.paperColor);
-  const visibleTemplates = useMemo(() => {
-    const query = templateSearch.trim().toLocaleLowerCase("en");
-    return TEMPLATE_DEFINITIONS.filter((template) =>
-      (templateFilter === "all" || template.category === templateFilter)
-      && (!query || `${template.name} ${template.description} ${template.layout}`
-        .toLocaleLowerCase("en")
-        .includes(query)),
-    );
-  }, [templateFilter, templateSearch]);
+  const selectedTemplate = TEMPLATE_DEFINITIONS.find(
+    (template) => template.id === design.templateId,
+  ) ?? TEMPLATE_DEFINITIONS[0]!;
 
   return (
     <div className="editor-stack">
@@ -132,69 +97,22 @@ export function DesignPanel({
         <div className="template-picker">
           <div className="design-subheading">
             <h3>Template</h3>
-            <span>{TEMPLATE_DEFINITIONS.length} professionally configured layouts</span>
+            <span>Choose layouts in the full catalog</span>
           </div>
-          <div className="template-gallery-toolbar">
-            <div className="template-category-tabs" role="tablist" aria-label="Template categories">
-              {TEMPLATE_FILTERS.map((filter) => {
-                const count = filter.id === "all"
-                  ? TEMPLATE_DEFINITIONS.length
-                  : TEMPLATE_DEFINITIONS.filter((template) => template.category === filter.id).length;
-                return (
-                  <button
-                    type="button"
-                    role="tab"
-                    aria-selected={templateFilter === filter.id}
-                    className={templateFilter === filter.id ? "selected" : ""}
-                    key={filter.id}
-                    onClick={() => setTemplateFilter(filter.id)}
-                  >
-                    {filter.label} <span>{count}</span>
-                  </button>
-                );
-              })}
+          <div className="selected-template-card">
+            <TemplateMiniature template={selectedTemplate} />
+            <div>
+              <span className={`template-category-badge ${selectedTemplate.category}`}>
+                {selectedTemplate.category}
+              </span>
+              <h4>{selectedTemplate.name}</h4>
+              <p>{selectedTemplate.description}</p>
+              <small>{selectedTemplate.format} · {selectedTemplate.atsRating}</small>
             </div>
-            <input
-              type="search"
-              value={templateSearch}
-              aria-label="Search resume templates"
-              placeholder="Search templates"
-              onChange={(event) => setTemplateSearch(event.target.value)}
-            />
           </div>
-          <div className="template-grid" role="radiogroup" aria-label="Resume template">
-            {visibleTemplates.map((template) => (
-              <button
-                className={
-                  template.id === design.templateId ? "template-card selected" : "template-card"
-                }
-                type="button"
-                role="radio"
-                aria-checked={template.id === design.templateId}
-                key={template.id}
-                onClick={() => onDesignChange({ templateId: template.id })}
-              >
-                <TemplateMiniature template={template} />
-                <span className="template-card-copy">
-                  <span className="template-card-heading">
-                    <strong>{template.name}</strong>
-                    <b className={`template-category-badge ${template.category}`}>{template.category}</b>
-                  </span>
-                  <small>{template.description}</small>
-                  <em>
-                    {template.atsRating === "optimized"
-                      ? "ATS optimized"
-                      : template.atsRating === "compatible"
-                        ? "ATS compatible"
-                        : "Creative"}
-                  </em>
-                </span>
-              </button>
-            ))}
-          </div>
-          {visibleTemplates.length === 0 && (
-            <p className="template-empty">No templates match “{templateSearch.trim()}”.</p>
-          )}
+          <button className="secondary-button full-width" type="button" onClick={onBrowseTemplates}>
+            Browse all {TEMPLATE_DEFINITIONS.length} templates
+          </button>
         </div>
 
         <PhotoControls

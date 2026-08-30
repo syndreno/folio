@@ -12,7 +12,11 @@ import {
   getResumeTemplate,
   getTemplateDensityFactor,
 } from "../../../constants/resumeTemplates";
-import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
+import type {
+  ResumeDocument,
+  ResumeSectionItem,
+  ResumeSectionType,
+} from "../../../domain/resume.types";
 import type { SectionDropPosition } from "../../../domain/resume.transforms";
 import { useFontAwesomeIconDefinition } from "../../icons/useFontAwesomeIconDefinition";
 import { paginatePreviewBlocks } from "./paginatePreviewBlocks";
@@ -22,10 +26,16 @@ const CSS_PIXELS_PER_MILLIMETRE = 96 / 25.4;
 const PAGINATION_SAFETY_PIXELS = 4;
 
 type PreviewBlock =
-  | { id: string; kind: "heading"; sectionId: string; title: string }
-  | { id: string; kind: "summary"; content: string }
-  | { id: string; kind: "simple-items"; sectionId: string; items: ResumeSectionItem[] }
-  | { id: string; kind: "entry"; sectionId: string; item: ResumeSectionItem };
+  | { id: string; kind: "heading"; sectionId: string; sectionType: ResumeSectionType; title: string }
+  | { id: string; kind: "summary"; sectionId: string; sectionType: ResumeSectionType; content: string }
+  | { id: string; kind: "simple-items"; sectionId: string; sectionType: ResumeSectionType; items: ResumeSectionItem[] }
+  | { id: string; kind: "entry"; sectionId: string; sectionType: ResumeSectionType; item: ResumeSectionItem };
+
+interface PreviewSectionGroup {
+  sectionId: string;
+  sectionType: ResumeSectionType;
+  blocks: PreviewBlock[];
+}
 
 function safeHref(value: string): string | undefined {
   if (!value) return undefined;
@@ -68,13 +78,21 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
 
   return orderedSections.flatMap((section) => {
     const blocks: PreviewBlock[] = [
-      { id: `${section.id}-heading`, kind: "heading", sectionId: section.id, title: section.title },
+      {
+        id: `${section.id}-heading`,
+        kind: "heading",
+        sectionId: section.id,
+        sectionType: section.type,
+        title: section.title,
+      },
     ];
 
     if (section.content) {
       blocks.push({
         id: `${section.id}-summary`,
         kind: "summary",
+        sectionId: section.id,
+        sectionType: section.type,
         content: section.content,
       });
     }
@@ -86,6 +104,7 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
         id: `${section.id}-simple-${simpleItems[0]?.id ?? blocks.length}`,
         kind: "simple-items",
         sectionId: section.id,
+        sectionType: section.type,
         items: simpleItems,
       });
       simpleItems = [];
@@ -106,6 +125,7 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
         id: `${section.id}-entry-${item.id}`,
         kind: "entry",
         sectionId: section.id,
+        sectionType: section.type,
         item,
       });
     });
@@ -113,6 +133,28 @@ function createPreviewBlocks(resume: ResumeDocument): PreviewBlock[] {
 
     return blocks;
   });
+}
+
+function groupPreviewBlocks(
+  blockIds: string[],
+  blockMap: Map<string, PreviewBlock>,
+): PreviewSectionGroup[] {
+  const groups: PreviewSectionGroup[] = [];
+  blockIds.forEach((blockId) => {
+    const block = blockMap.get(blockId);
+    if (!block) return;
+    const currentGroup = groups.at(-1);
+    if (currentGroup?.sectionId === block.sectionId) {
+      currentGroup.blocks.push(block);
+      return;
+    }
+    groups.push({
+      sectionId: block.sectionId,
+      sectionType: block.sectionType,
+      blocks: [block],
+    });
+  });
+  return groups;
 }
 
 function ResumeHeader({ resume, measurement = false }: { resume: ResumeDocument; measurement?: boolean }) {
@@ -397,9 +439,14 @@ export function ClassicTemplate({
             aria-label={`${resume.personal.fullName || "Resume"} preview, page ${pageIndex + 1} of ${pageBlockIds.length}`}
           >
             {pageIndex === 0 && <ResumeHeader resume={resume} />}
-            {page.map((blockId) => {
-              const block = blockMap.get(blockId);
-              if (!block) return null;
+            <div className="resume-page-body">
+              {groupPreviewBlocks(page, blockMap).map((group) => (
+                <div
+                  className="resume-section-group"
+                  data-resume-section-type={group.sectionType}
+                  key={`${pageIndex}-${group.sectionId}`}
+                >
+                  {group.blocks.map((block) => {
               if (block.kind !== "heading") {
                 if (
                   !onItemReorder
@@ -535,7 +582,10 @@ export function ClassicTemplate({
                   }}
                 />
               );
-            })}
+                  })}
+                </div>
+              ))}
+            </div>
           </article>
         </div>
       ))}
@@ -552,7 +602,19 @@ export function ClassicTemplate({
         aria-hidden="true"
       >
         <ResumeHeader resume={resume} measurement />
-        {blocks.map((block) => <PreviewBlockContent block={block} measurement key={block.id} />)}
+        <div className="resume-page-body">
+          {groupPreviewBlocks(blocks.map((block) => block.id), blockMap).map((group) => (
+            <div
+              className="resume-section-group"
+              data-resume-section-type={group.sectionType}
+              key={`measurement-${group.sectionId}`}
+            >
+              {group.blocks.map((block) => (
+                <PreviewBlockContent block={block} measurement key={block.id} />
+              ))}
+            </div>
+          ))}
+        </div>
       </article>
     </>
   );
