@@ -1,6 +1,27 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { getDocument, OPS } from "pdfjs-dist/legacy/build/pdf.mjs";
+import JSZip from "jszip";
+
+test("guides users from a PDF or existing Markdown file into the builder", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("button", { name: "Guide", exact: true }).click();
+
+  await expect(page.getByRole("heading", { name: /Bring your resume into Folio/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Improve an existing Folio .md file" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Convert an existing resume PDF" })).toBeVisible();
+  await expect(page.getByText("An external AI service may not.")).toBeVisible();
+  await expect(page.locator(".guide-prompt-card pre")).toHaveCount(2);
+  await expect(page.getByRole("link", { name: /Download .md template/i })).toHaveAttribute("download", "");
+  await expect(page.getByRole("button", { name: /Import finished .md/i })).toBeVisible();
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("heading", { name: /Bring your resume into Folio/i })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
+
+  await page.getByRole("button", { name: "Back to home" }).click();
+  await expect(page.getByRole("heading", { name: /Your experience/i })).toBeVisible();
+});
 
 test("creates, customizes, checks, and downloads a portable resume", async ({ page }) => {
   await page.goto("/");
@@ -9,9 +30,16 @@ test("creates, customizes, checks, and downloads a portable resume", async ({ pa
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Morgan Rivera");
   await expect(page.locator(".resume-header h1").first()).toHaveText("Morgan Rivera");
+  const firstInlineSkill = page.locator(
+    '.resume-page[data-skill-style="inline"] .simple-entry-list .simple-pill',
+  ).first();
+  await expect(firstInlineSkill).toBeVisible();
+  expect(await firstInlineSkill.evaluate(
+    (element) => window.getComputedStyle(element, "::before").content,
+  )).toContain("•");
 
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
+  await page.getByRole("button", { name: /Browse all 58 templates/i }).click();
   await page.getByRole("button", { name: "Use Modern ATS", exact: true }).click();
   await expect(page.locator(".resume-page.template-modern").first()).toBeVisible();
 
@@ -35,15 +63,15 @@ test("exports the selected premium template with selectable text and vector cont
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Riley Thompson");
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
-  await page.getByRole("button", { name: "Use Pinnacle", exact: true }).click();
+  await page.getByRole("button", { name: /Browse all 58 templates/i }).click();
+  await page.getByRole("button", { name: "Use Boardroom", exact: true }).click();
   await page.getByRole("button", { name: "Contemporary" }).click();
   await page.getByRole("button", { name: "Email icon picker" }).click();
   await page.getByRole("searchbox", { name: "Search Email icons" }).fill("paper plane");
   await page.getByRole("option", { name: "Use Paper Plane icon for Email", exact: true }).click();
-  await expect(page.locator(".resume-page.template-pinnacle").first()).toHaveAttribute(
+  await expect(page.locator(".resume-page.template-boardroom").first()).toHaveAttribute(
     "data-template-layout",
-    "executive",
+    "statement",
   );
   await expect(page.locator(".resume-contact .contact-icon").first()).toBeVisible();
 
@@ -79,11 +107,11 @@ test("exports a premium visual layout to DOCX, PNG, and JPEG", async ({ page }) 
   await page.getByRole("button", { name: /Create a new resume/i }).click();
   await page.getByLabel("Full name").fill("Casey Stone");
   await page.getByRole("button", { name: "Design", exact: true }).click();
-  await page.getByRole("button", { name: /Browse all 54 templates/i }).click();
-  await page.getByRole("button", { name: "Use Editorial", exact: true }).click();
-  await expect(page.locator(".resume-page.template-editorial").first()).toHaveAttribute(
+  await page.getByRole("button", { name: /Browse all 58 templates/i }).click();
+  await page.getByRole("button", { name: "Use Aperture", exact: true }).click();
+  await expect(page.locator(".resume-page.template-aperture").first()).toHaveAttribute(
     "data-template-layout",
-    "editorial",
+    "showcase",
   );
 
   const exportFormat = async (buttonName: RegExp, expectedFileName: string) => {
@@ -96,9 +124,16 @@ test("exports a premium visual layout to DOCX, PNG, and JPEG", async ({ page }) 
       throw new Error(`${error instanceof Error ? error.message : String(error)} Status: ${status}`);
     });
     expect(download.suggestedFilename()).toBe(expectedFileName);
+    return download;
   };
 
-  await exportFormat(/Word DOCX/i, "casey-stone-resume.docx");
+  const docxDownload = await exportFormat(/Word DOCX/i, "casey-stone-resume.docx");
+  const docxPath = await docxDownload.path();
+  if (!docxPath) throw new Error("Playwright did not retain the DOCX download");
+  const docxArchive = await JSZip.loadAsync(await readFile(docxPath));
+  const documentXml = await docxArchive.file("word/document.xml")?.async("string");
+  expect(documentXml).toContain("Casey Stone");
+  expect(documentXml).toContain("<w:tbl>");
   await exportFormat(/PNG pages/i, "casey-stone-resume-page-1.png");
   await exportFormat(/JPEG pages/i, "casey-stone-resume-page-1.jpg");
 });

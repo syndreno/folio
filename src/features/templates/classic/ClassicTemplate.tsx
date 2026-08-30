@@ -431,6 +431,7 @@ export function ClassicTemplate({
           <article
             className={`resume-page ${pageSizeClass} ${templateClass}`}
             style={style}
+            data-template-category={selectedTemplate.category}
             data-template-layout={selectedTemplate.layout}
             data-section-style={selectedTemplate.sectionStyle}
             data-skill-style={selectedTemplate.skillStyle}
@@ -594,6 +595,7 @@ export function ClassicTemplate({
         ref={measurementPageRef}
         className={`resume-page resume-measurement ${pageSizeClass} ${templateClass}`}
         style={style}
+        data-template-category={selectedTemplate.category}
         data-template-layout={selectedTemplate.layout}
         data-section-style={selectedTemplate.sectionStyle}
         data-skill-style={selectedTemplate.skillStyle}

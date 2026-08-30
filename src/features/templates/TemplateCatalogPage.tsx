@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faArrowLeft, faCheck, faMagnifyingGlass } from "@fortawesome/free-solid-svg-icons";
 import type { ResumeTemplateId } from "../../domain/resume.types";
@@ -41,20 +41,25 @@ const ATS_FILTERS: Array<{ value: AtsFilter; label: string }> = [
 ];
 
 const LAYOUT_FAMILY_LEADERS: ResumeTemplateId[] = [
+  "veridian",
+  "boardroom",
+  "aperture",
+  "maison",
+  "professional",
+  "engineer",
+  "editorial",
+  "modern",
+  "executive",
+  "catalyst",
+  "portfolio",
   "classic",
   "clean-slate",
-  "civic",
-  "catalyst",
+  "product",
   "graduate",
-  "engineer",
-  "portfolio",
   "healthcare-basic",
-  "modern",
+  "civic",
   "clearpath",
   "precision",
-  "product",
-  "editorial",
-  "executive",
 ];
 
 function formatLabel(value: string): string {
@@ -70,6 +75,7 @@ export function TemplateCatalogPage({
   onBack,
   onHome,
   onUseTemplate,
+  onGuide,
   headerActions,
 }: {
   selectedTemplateId: ResumeTemplateId;
@@ -77,6 +83,7 @@ export function TemplateCatalogPage({
   onBack: () => void;
   onHome: () => void;
   onUseTemplate: (templateId: ResumeTemplateId) => void;
+  onGuide?: () => void;
   headerActions?: ReactNode;
 }) {
   const [focusedTemplateId, setFocusedTemplateId] = useState<ResumeTemplateId>(selectedTemplateId);
@@ -133,10 +140,10 @@ export function TemplateCatalogPage({
         <section className="template-catalog-intro">
           <div>
             <p className="eyebrow">Professional resume layouts</p>
-            <h1>Choose the structure that tells your story best.</h1>
+            <h1>Choose a finished design that feels like you.</h1>
             <p>
-              Filter by resume format and career type. Colors, fonts, and spacing remain
-              customizable after you choose a layout.
+              Compare realistic content, curated color palettes, typography, and page composition.
+              Every detail remains customizable after you choose.
             </p>
           </div>
           <div className="template-catalog-summary" aria-label="Template catalog summary">
@@ -186,8 +193,17 @@ export function TemplateCatalogPage({
             {visibleTemplates.map((template) => {
               const isFocused = template.id === focusedTemplateId;
               const isCurrent = hasOpenResume && template.id === selectedTemplateId;
+              const cardStyle = {
+                "--catalog-accent": template.visualPreset.accentColor,
+                "--catalog-paper": template.visualPreset.paperColor,
+              } as CSSProperties;
               return (
-                <article className={isFocused ? "catalog-template-card selected" : "catalog-template-card"} key={template.id}>
+                <article
+                  className={isFocused ? "catalog-template-card selected" : "catalog-template-card"}
+                  data-category={template.category}
+                  key={template.id}
+                  style={cardStyle}
+                >
                   <button
                     className="catalog-template-preview"
                     type="button"
@@ -244,7 +260,11 @@ export function TemplateCatalogPage({
         )}
 
         {focusedTemplate && (
-          <aside className="template-selection-dock" aria-live="polite">
+          <aside
+            className="template-selection-dock"
+            aria-live="polite"
+            style={{ "--ui-accent": focusedTemplate.visualPreset.accentColor } as CSSProperties}
+          >
             <div>
               <span>Selected layout</span>
               <strong>{focusedTemplate.name}</strong>
@@ -255,7 +275,7 @@ export function TemplateCatalogPage({
           </aside>
         )}
       </main>
-      <SiteFooter />
+      <SiteFooter onGuide={onGuide} />
     </div>
   );
 }

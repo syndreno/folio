@@ -1,4 +1,10 @@
-export function SiteFooter({ compact = false }: { compact?: boolean }) {
+export function SiteFooter({
+  compact = false,
+  onGuide,
+}: {
+  compact?: boolean;
+  onGuide?: () => void;
+}) {
   return (
     <footer className={compact ? "site-footer compact-footer" : "site-footer"}>
       <div className="footer-brand">
@@ -9,6 +15,11 @@ export function SiteFooter({ compact = false }: { compact?: boolean }) {
         </div>
       </div>
       <nav aria-label="Footer links">
+        {onGuide && (
+          <button type="button" onClick={onGuide}>
+            Import guide
+          </button>
+        )}
         <a href={`${import.meta.env.BASE_URL}examples/resume-template.md`} download>
           Markdown template
         </a>

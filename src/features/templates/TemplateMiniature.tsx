@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { ResumeTemplateDefinition } from "./registry";
 
 const PREVIEW_PROFILES: Record<ResumeTemplateDefinition["audience"], {
@@ -23,10 +24,25 @@ export function TemplateMiniature({
   large?: boolean;
 }) {
   const profile = PREVIEW_PROFILES[template.audience];
-  const hasSidebar = ["split", "professional", "tech", "functional"].includes(
+  const hasSidebar = [
+    "split",
+    "professional",
+    "tech",
+    "functional",
+    "sidebar",
+    "showcase",
+    "monogram",
+  ].includes(
     template.layoutFamily,
   );
   const previewEmail = `${profile.name.split(" ")[0]?.toLocaleLowerCase("en") ?? "hello"}@example.com`;
+  const previewStyle = {
+    "--ui-accent": template.visualPreset.accentColor,
+    "--mini-paper": template.visualPreset.paperColor,
+    "--mini-ink": template.visualPreset.textColor,
+    "--mini-body-font": template.visualPreset.fontFamily,
+    "--mini-heading-font": template.visualPreset.headingFontFamily,
+  } as CSSProperties;
 
   return (
     <span
@@ -37,6 +53,7 @@ export function TemplateMiniature({
       data-density={template.density}
       data-format={template.format}
       data-audience={template.audience}
+      style={previewStyle}
       aria-hidden="true"
     >
       <span className="template-miniature-page">

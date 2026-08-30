@@ -1,6 +1,6 @@
 # Folio Resume Builder — Project Handoff Guide
 
-Last updated: 2026-08-30
+Last updated: 2026-08-31
 
 Read this file first when resuming work. Then read `AGENTS.md`, which remains the authoritative product and engineering specification. This guide records the current implementation state and the context behind completed work.
 
@@ -14,6 +14,7 @@ Main entry paths:
 - Upload a Markdown resume.
 - Load the complete fictional example.
 - Browse the dedicated full-page resume template catalog before or during editing.
+- Open the dedicated import guide for Folio Markdown improvement or PDF-to-Markdown conversion with an external AI assistant.
 
 Supported exports:
 
@@ -58,8 +59,22 @@ Use `npm.cmd` in this Windows environment because PowerShell may block `npm.ps1`
 - Website customization from the header icon only, on both home and builder pages.
 - Day/night mode, website accent, UI font, letter spacing, line height, density, and reduced-motion controls.
 - Dynamic favicon using the Folio logo and selected website color.
+- Responsive import guide linked from the home menu, template catalog, editor header, and footers.
+- Copy-ready, fact-preserving AI prompts for improving an existing Folio `.md` file or converting a resume PDF with the official Markdown template.
+- Direct `.md` template download and finished-file import actions on the guide page, plus AI privacy and human-review warnings.
 
 Important browser limitation: a real tab/window close can only show the browser-controlled `beforeunload` prompt. Browsers do not allow websites to replace that system prompt with custom HTML or add a download button to it. Custom branded leave dialogs are used for in-app navigation where the browser permits them.
+
+## Resume Import Guide
+
+`src/features/guide/ResumeGuidePage.tsx` is a dedicated, static-hosting-compatible application page. It explains two portable workflows:
+
+1. Download the current Folio `.md`, attach it to an AI assistant, ask for fact-preserving improvements, save the complete response as UTF-8 Markdown, and re-import it.
+2. Download `public/examples/resume-template.md`, attach that template and an existing resume PDF to an AI assistant, request a non-invented transcription into Folio Markdown, review uncertain `[CHECK: ...]` markers, and import the result.
+
+The page deliberately does not call an AI service or upload resume data itself. Folio continues to process imports locally. The privacy notice makes clear that an external AI provider may retain uploaded files and advises users to remove unnecessary sensitive information. Both prompts require full Markdown output, preservation of front matter/custom sections, standard ATS-readable headings, and no invented facts.
+
+The page remains mounted through the existing `ApplicationView` state rather than a server-dependent route, so GitHub Pages compatibility is preserved. Opening it from an active editor does not replace or mutate the resume. Tests live in `src/tests/resumeGuidePage.test.tsx` and `e2e/resume-builder.spec.ts`.
 
 ## Resume Design Controls
 
@@ -75,24 +90,27 @@ The current default is Calibri body text with Georgia headings.
 
 ## Template System
 
-The builder contains 54 backward-compatible template configurations:
+The builder contains 58 backward-compatible template configurations:
 
 - 18 Basic.
 - 18 Advanced.
-- 18 Premium.
+- 22 Premium.
 
-Template selection now lives on a dedicated responsive catalog page instead of inside the narrow Design panel. It provides large A4-proportioned previews filled with fictional names, roles, contact details, profile text, dated experience, measurable bullets, education, skills, projects, and template-specific sidebars. This makes layout and typography differences visible before selection instead of representing content with abstract placeholder bars. The catalog also includes search and filters for resume format, career audience, and ATS level. It can be opened from the home page or Design tab. Selecting from an open resume preserves all content and returns to the editor; selecting from home starts a blank resume using that template.
+Template selection has two complementary interfaces. The dedicated responsive catalog provides large A4-proportioned previews filled with fictional names, roles, contact details, profile text, dated experience, measurable bullets, education, skills, projects, and template-specific sidebars. This makes layout and typography differences visible before selection instead of representing content with abstract placeholder bars. The catalog leads with structurally distinctive Professional, Tech, and Editorial designs and includes search and filters for resume format, career audience, and ATS level.
+
+While editing, the Design panel provides Previous/Next controls and an embedded searchable quick switcher with Basic, Advanced, and Premium filters. It changes the live preview immediately without leaving the builder. The full gallery remains available for larger comparison. Template switching preserves resume content and applies the template's curated visual preset; photos remain in state even when a selected template does not display them.
 
 The Design tab shows only the current template and a button to reopen the catalog. Basic, Advanced, and Premium remain configuration tiers, while the catalog adds chronological, skill-first, and combination format metadata plus career-purpose metadata.
 
-The catalog is honest about the current count: 54 configurations across fifteen layout families. Color, density, and typography combinations are not described as 54 independent layout engines. Every definition has a unique combination drawn from:
+The catalog is honest about the current count: 58 configurations across nineteen layout families. Color, density, and typography combinations are not described as 58 independent layout engines. Every definition has a unique combination drawn from:
 
-- Fifteen header/layout systems: classic, minimal, centered, band, rail, boxed, split, editorial, executive, functional, student, tech, portfolio, healthcare, and professional sidebar.
+- Nineteen header/layout systems: classic, minimal, centered, band, rail, boxed, split, editorial, executive, functional, student, tech, portfolio, healthcare, professional sidebar, identity sidebar, executive statement, portfolio showcase, and centered monogram.
 - Eight section patterns: rule, plain, left rule, band, double rule, label, boxed, and numbered.
 - Four skill treatments: chips, outline, inline, and list.
 - Three density profiles: airy, balanced, and compact.
 - Serif, sans-serif, or mixed heading tone.
 - Independent photo support and ATS rating.
+- Curated per-template accent, paper, text, body-font, and heading-font presets. Gallery cards and miniatures display these palettes, and selecting a template applies the same preset to preview and exports.
 
 The visual benchmark for the premium catalog is the official Novoresume template gallery (`https://novoresume.com/resume-templates`). Use it to study composition quality--identity proportions, typography hierarchy, sidebars, section rhythm, skill treatments, and thumbnail presentation--but create original Folio layouts rather than copying a named template. The Professional, Tech, and Functional families now use distinct full-page compositions based on those principles:
 
@@ -101,6 +119,13 @@ The visual benchmark for the premium catalog is the official Novoresume template
 - Functional: accent identity card, full-width profile, skills-first left rail, and experience/education narrative on the right.
 
 These multi-region templates are rated ATS Compatible, not ATS Optimized. The default Classic/Modern single-column families remain the safest ATS choice.
+
+Four premium layouts provide additional structural variety:
+
+- Veridian: accent identity banner, left expertise rail, and spacious main career narrative.
+- Boardroom: dark executive statement banner, prominent profile panel, and date-led career entries.
+- Aperture: photo-led editorial header, project cards, and a compact expertise column.
+- Maison: centered portrait identity with a refined balanced-column body.
 
 The live renderer now groups every section semantically. Split and editorial families use separate section-title/content rails, rail families use timeline entries, boxed families visually group section bodies, centered families use balanced section dividers, and executive families emphasize the career profile. These structural rules also apply to measurement pages, so pagination remains conservative.
 
@@ -154,6 +179,7 @@ All exports consume the same normalized `ResumeDocument` and selected template I
 ### PDF
 
 - Real selectable/searchable Unicode text, not a screenshot.
+- Dictionary hyphenation is disabled so headings, skills, and keywords copy as complete ATS tokens instead of split forms such as `Certifica- tions`.
 - Automatic multi-page wrapping.
 - Heading presence and widow/orphan protection.
 - Vector Font Awesome contact icons.
@@ -188,7 +214,7 @@ Key file: `src/features/export/image/exportResumeImages.ts`.
 - Includes version, content, custom links/icons, section order, visibility, selected template, and supported design settings.
 - Human-readable YAML front matter and Markdown body.
 - Unknown Markdown sections are preserved as custom sections.
-- All 54 template IDs round-trip through import/export.
+- All 58 template IDs round-trip through import/export.
 
 Key files:
 
@@ -218,11 +244,12 @@ Documentation: `docs/ats-guidelines.md`.
 
 ## Important Tests
 
-Latest verified status on 2026-08-30 (rerun after premium-composition changes before handoff):
+Latest verified status on 2026-08-31 (rerun after the full 58-template, five-format export audit):
 
 - 24 Vitest files passed.
-- 60 unit/integration tests passed.
+- 66 unit/integration tests passed.
 - 3 Playwright end-to-end tests passed.
+- The opt-in 58-template raster audit passed all 116 PNG/JPEG downloads.
 - ESLint passed.
 - TypeScript typecheck passed.
 - Production build passed.
@@ -230,9 +257,16 @@ Latest verified status on 2026-08-30 (rerun after premium-composition changes be
 Coverage includes:
 
 - Markdown parsing, security, aliases, and round-tripping.
-- Every template ID through Markdown.
-- Editable DOCX generation for all 54 templates.
-- PDF generation across all fifteen layout systems.
+- Every complete example resume through Markdown for all 58 template IDs, including template presets and section/item preservation.
+- Rich editable DOCX generation for all 58 templates, including content, links, bullets, relationships, layout structures, and rounded skill shapes.
+- Native Microsoft Word open/close compatibility for all 58 generated DOCX files with editable text and no repair failures.
+- Selectable PDF generation and text extraction for all 58 templates across all nineteen layout systems.
+- Full browser audit of every live template plus 116 actual PNG/JPEG downloads, including file signatures, pixel dimensions, page counts, overflow, and console errors.
+- Visual comparison of a representative from every layout system against the live preview.
+- PDF list bullets use separate marker/text columns, preserve container padding, and avoid opaque item boxes.
+- Inline skill lists start with a bullet in preview, PDF, and DOCX; image exports inherit the preview rendering.
+- DOCX skill sections use native editable tabbed list paragraphs, inline rounded DrawingML capsules with real text, functional pairs, and paragraph-based tech proficiency bars; skill treatments do not expose editable Word tables or grid handles. Capsule geometry is normalized after packing because the DOCX library emits rectangular Word shapes by default.
+- DOCX shaded section headings use same-color paragraph borders and preserved spaces to provide reliable horizontal and vertical padding in Microsoft Word.
 - Multi-page selectable PDF text.
 - Vector contact icons in PDF.
 - Professional photo output.
@@ -242,6 +276,22 @@ Coverage includes:
 - Browser selection of Premium templates and searchable icons.
 
 Primary catalog/export regression test: `src/tests/templateCatalogExports.test.ts`.
+
+The expensive raster matrix is retained as an opt-in Playwright audit so routine browser tests stay fast. Run it in PowerShell with:
+
+```powershell
+$env:FULL_TEMPLATE_AUDIT = "1"
+npx.cmd playwright test e2e/template-export-audit.spec.ts
+Remove-Item Env:FULL_TEMPLATE_AUDIT
+```
+
+To write all DOCX files for a native Microsoft Word compatibility sweep:
+
+```powershell
+$env:WRITE_WORD_AUDIT = "1"
+npm.cmd test -- --run src/tests/templateCatalogExports.test.ts
+Remove-Item Env:WRITE_WORD_AUDIT
+```
 
 Run all checks:
 

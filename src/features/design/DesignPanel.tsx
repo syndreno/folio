@@ -1,3 +1,4 @@
+import { useMemo, useState, type CSSProperties } from "react";
 import {
   ATS_SAFE_FONTS,
   DEFAULT_ACCENT_COLOR,
@@ -79,11 +80,43 @@ export function DesignPanel({
   onPhotoChange,
   onBrowseTemplates,
 }: DesignPanelProps) {
+  const [showQuickTemplates, setShowQuickTemplates] = useState(false);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateCategory, setTemplateCategory] = useState<"all" | "basic" | "advanced" | "premium">("all");
   const textContrast = contrastRatio(design.textColor, design.paperColor);
   const accentContrast = contrastRatio(design.accentColor, design.paperColor);
   const selectedTemplate = TEMPLATE_DEFINITIONS.find(
     (template) => template.id === design.templateId,
   ) ?? TEMPLATE_DEFINITIONS[0]!;
+  const selectedTemplateIndex = TEMPLATE_DEFINITIONS.findIndex(
+    (template) => template.id === selectedTemplate.id,
+  );
+  const quickTemplates = useMemo(() => {
+    const query = templateSearch.trim().toLocaleLowerCase("en");
+    return TEMPLATE_DEFINITIONS.filter((template) => (
+      (templateCategory === "all" || template.category === templateCategory)
+      && (!query || [
+        template.name,
+        template.description,
+        template.audience,
+        template.format,
+      ].join(" ").toLocaleLowerCase("en").includes(query))
+    ));
+  }, [templateCategory, templateSearch]);
+
+  const applyTemplate = (template: (typeof TEMPLATE_DEFINITIONS)[number]) => {
+    onDesignChange({
+      templateId: template.id,
+      ...template.visualPreset,
+    });
+  };
+
+  const moveTemplate = (offset: number) => {
+    const nextIndex = (selectedTemplateIndex + offset + TEMPLATE_DEFINITIONS.length)
+      % TEMPLATE_DEFINITIONS.length;
+    const nextTemplate = TEMPLATE_DEFINITIONS[nextIndex];
+    if (nextTemplate) applyTemplate(nextTemplate);
+  };
 
   return (
     <div className="editor-stack">
@@ -97,9 +130,12 @@ export function DesignPanel({
         <div className="template-picker">
           <div className="design-subheading">
             <h3>Template</h3>
-            <span>Choose layouts in the full catalog</span>
+            <span>Switch here while watching the live preview</span>
           </div>
-          <div className="selected-template-card">
+          <div
+            className="selected-template-card"
+            style={{ "--selected-template-accent": selectedTemplate.visualPreset.accentColor } as CSSProperties}
+          >
             <TemplateMiniature template={selectedTemplate} />
             <div>
               <span className={`template-category-badge ${selectedTemplate.category}`}>
@@ -110,8 +146,68 @@ export function DesignPanel({
               <small>{selectedTemplate.format} · {selectedTemplate.atsRating}</small>
             </div>
           </div>
+          <div className="quick-template-actions">
+            <button type="button" onClick={() => moveTemplate(-1)} aria-label="Use previous template">
+              ← Previous
+            </button>
+            <button
+              className="quick-template-toggle"
+              type="button"
+              aria-expanded={showQuickTemplates}
+              onClick={() => setShowQuickTemplates((current) => !current)}
+            >
+              {showQuickTemplates ? "Close quick switcher" : "Quick switch template"}
+            </button>
+            <button type="button" onClick={() => moveTemplate(1)} aria-label="Use next template">
+              Next →
+            </button>
+          </div>
+          {showQuickTemplates && (
+            <div className="quick-template-panel">
+              <input
+                type="search"
+                value={templateSearch}
+                placeholder="Search templates"
+                aria-label="Search quick templates"
+                onChange={(event) => setTemplateSearch(event.target.value)}
+              />
+              <div className="quick-template-tabs" aria-label="Quick template categories">
+                {(["all", "basic", "advanced", "premium"] as const).map((category) => (
+                  <button
+                    className={templateCategory === category ? "selected" : ""}
+                    type="button"
+                    key={category}
+                    aria-pressed={templateCategory === category}
+                    onClick={() => setTemplateCategory(category)}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+              <div className="quick-template-grid">
+                {quickTemplates.map((template) => (
+                  <button
+                    className={template.id === design.templateId ? "quick-template-card selected" : "quick-template-card"}
+                    type="button"
+                    key={template.id}
+                    data-template-id={template.id}
+                    aria-pressed={template.id === design.templateId}
+                    style={{ "--quick-template-accent": template.visualPreset.accentColor } as CSSProperties}
+                    onClick={() => applyTemplate(template)}
+                  >
+                    <TemplateMiniature template={template} />
+                    <span>
+                      <strong>{template.name}</strong>
+                      <small>{template.category} · {template.atsRating}</small>
+                    </span>
+                  </button>
+                ))}
+              </div>
+              {quickTemplates.length === 0 && <p className="template-empty">No matching templates.</p>}
+            </div>
+          )}
           <button className="secondary-button full-width" type="button" onClick={onBrowseTemplates}>
-            Browse all {TEMPLATE_DEFINITIONS.length} templates
+            Browse all {TEMPLATE_DEFINITIONS.length} templates in full gallery
           </button>
         </div>
 

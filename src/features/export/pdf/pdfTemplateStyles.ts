@@ -37,6 +37,7 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
     && /^data:image\/(?:png|jpeg);base64,/i.test(resume.personal.photo);
   const subtleRule = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.3);
   const subtleFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.09);
+  const boxedFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.04);
   const headerFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.07);
   const pillBorder = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.38);
   const photoSpace = showPhoto
@@ -167,6 +168,44 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
           borderBottomWidth: 1.5,
           borderBottomColor: resume.design.accentColor,
         };
+      case "sidebar":
+        return {
+          ...photoSettings,
+          paddingBottom: 9,
+          borderBottomWidth: 1.5,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "statement":
+        return {
+          ...photoSettings,
+          paddingTop: 11.25,
+          paddingRight: 12,
+          paddingBottom: 11.25,
+          paddingLeft: 12,
+          backgroundColor: mixHexColors(resume.design.accentColor, "#111827", 0.76),
+        };
+      case "showcase":
+        return {
+          ...photoSettings,
+          paddingTop: 8.25,
+          paddingRight: photoSpace ?? 9,
+          paddingBottom: 8.25,
+          paddingLeft: 9,
+          backgroundColor: subtleFill,
+          borderBottomWidth: 3.75,
+          borderBottomColor: resume.design.accentColor,
+        };
+      case "monogram":
+        return {
+          ...photoSettings,
+          minHeight: showPhoto ? (30 * MILLIMETRES_TO_POINTS) + 52 : undefined,
+          paddingTop: showPhoto ? (30 * MILLIMETRES_TO_POINTS) + 10 : 8.25,
+          paddingRight: 0,
+          paddingBottom: 9.75,
+          borderBottomWidth: 2.25,
+          borderBottomColor: resume.design.accentColor,
+          alignItems: "center" as const,
+        };
       default:
         return {
           ...photoSettings,
@@ -180,10 +219,14 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
   const sectionTitle = (() => {
     const base = {
       marginBottom: 5.25,
-      color: resume.design.accentColor,
+      color: ["professional", "tech"].includes(template.layout)
+        ? resume.design.textColor
+        : resume.design.accentColor,
       fontFamily: selectedHeadingFont,
-      fontSize: resume.design.headingSize,
-      fontWeight: 700 as const,
+      fontSize: template.layout === "professional"
+        ? resume.design.headingSize * 1.12
+        : resume.design.headingSize,
+      fontWeight: template.layout === "professional" ? 800 as const : 700 as const,
       lineHeight: 1.1,
       letterSpacing: resume.design.headingSize * 0.09,
       textTransform: "uppercase" as const,
@@ -195,18 +238,33 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
       case "double-rule": return { ...base, paddingTop: 3, paddingBottom: 3, borderTopWidth: 0.75, borderTopColor: resume.design.accentColor, borderBottomWidth: 0.75, borderBottomColor: resume.design.accentColor };
       case "label": return { ...base, alignSelf: "flex-start" as const, paddingTop: 3, paddingRight: 6, paddingBottom: 3, paddingLeft: 6, color: resume.design.paperColor, backgroundColor: resume.design.accentColor };
       case "boxed": return { ...base, paddingTop: 3, paddingRight: 5.25, paddingBottom: 3, paddingLeft: 5.25, borderWidth: 0.75, borderColor: subtleRule };
-      case "numbered": return { ...base, paddingBottom: 2.25, borderBottomWidth: 0.75, borderBottomColor: subtleRule };
+      case "numbered": return { ...base, marginBottom: 0, borderBottomWidth: 0 };
       default: return { ...base, paddingBottom: 2.25, borderBottomWidth: 0.75, borderBottomColor: subtleRule };
     }
   })();
 
-  const nameCentered = template.layout === "centered" || template.layout === "student";
-  const sansDisplay = template.headingTone === "sans" || ["band", "rail", "split", "functional", "tech", "healthcare"].includes(template.layout);
-  const nameSize = ["editorial", "portfolio", "professional"].includes(template.layout)
+  const nameCentered = ["centered", "student", "monogram"].includes(template.layout);
+  const sansDisplay = template.headingTone === "sans" || ["band", "rail", "split", "functional", "tech", "healthcare", "sidebar", "showcase"].includes(template.layout);
+  const nameSize = ["editorial", "portfolio", "professional", "monogram"].includes(template.layout)
     ? 29
+    : template.layout === "statement"
+      ? 30
     : template.layout === "minimal"
       ? 23
       : 25;
+  const layoutSectionContent = template.layout === "boxed"
+    ? {
+        paddingTop: 5.25,
+        paddingRight: 6.75,
+        paddingBottom: 5.25,
+        paddingLeft: 6.75,
+        backgroundColor: boxedFill,
+        borderRightWidth: 0.75,
+        borderBottomWidth: 0.75,
+        borderLeftWidth: 0.75,
+        borderColor: subtleRule,
+      }
+    : {};
   const sectionComposition = (() => {
     if (template.layout === "split") {
       return {
@@ -221,7 +279,7 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
           borderRightColor: resume.design.accentColor,
           borderBottomWidth: 0,
         },
-        content: { flexGrow: 1, flexBasis: 0 },
+        content: { ...layoutSectionContent, flexGrow: 1, flexBasis: 0 },
       };
     }
     if (template.layout === "editorial") {
@@ -229,19 +287,19 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
         section: { flexDirection: "row" as const, alignItems: "flex-start" as const, gap: 17 },
         title: {
           ...sectionTitle,
-          width: 68,
+          width: 87.8,
           flexShrink: 0,
           paddingBottom: 5.25,
           borderBottomWidth: 0.75,
           borderBottomColor: resume.design.accentColor,
         },
-        content: { flexGrow: 1, flexBasis: 0 },
+        content: { ...layoutSectionContent, flexGrow: 1, flexBasis: 0 },
       };
     }
     return {
       section: {},
       title: sectionTitle,
-      content: {},
+      content: layoutSectionContent,
     };
   })();
 
@@ -249,9 +307,9 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
     header,
     contacts: nameCentered ? { justifyContent: "center" } : {},
     name: {
-      color: template.layout === "tech"
+      color: ["tech", "statement", "sidebar"].includes(template.layout)
         ? "#FFFFFF"
-        : ["band", "rail", "split", "functional", "healthcare", "professional"].includes(template.layout)
+        : ["band", "rail", "split", "functional", "healthcare", "professional", "monogram"].includes(template.layout)
           ? resume.design.accentColor
           : resume.design.textColor,
       fontFamily: sansDisplay ? bodyFont : selectedHeadingFont,
@@ -264,14 +322,14 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
     role: {
       marginTop: 3.75,
       marginBottom: 6,
-      color: template.layout === "tech"
+      color: ["tech", "statement", "sidebar"].includes(template.layout)
         ? "#FFFFFF"
         : template.layout === "band" ? resume.design.textColor : resume.design.accentColor,
       fontSize: ["band", "editorial", "executive", "split", "functional", "student", "tech", "portfolio"].includes(template.layout) ? 9.5 : template.layout === "professional" ? 12 : 11,
       fontWeight: 700,
       letterSpacing: ["band", "editorial", "executive", "split", "student", "tech", "portfolio"].includes(template.layout) ? 0.9 : 0.44,
       textTransform: ["band", "editorial", "executive", "split", "student", "tech", "portfolio"].includes(template.layout) ? "uppercase" : "none",
-      textAlign: nameCentered ? "center" : "left",
+      textAlign: nameCentered ? "center" : template.layout === "statement" ? "right" : "left",
     },
     section: sectionComposition.section,
     sectionTitle: sectionComposition.title,
@@ -293,34 +351,35 @@ export function createPdfTemplateStyles(resume: ResumeDocument) {
       borderBottomWidth: 0,
       textAlign: "center" as const,
     },
-    summary: template.layout === "executive"
+    summary: template.layout === "executive" || template.layout === "statement"
       ? {
           paddingTop: 6.75,
           paddingRight: 9,
           paddingBottom: 6.75,
           paddingLeft: 9,
           backgroundColor: subtleFill,
-          borderLeftWidth: 2.25,
+          borderLeftWidth: template.layout === "statement" ? 3 : 2.25,
           borderLeftColor: resume.design.accentColor,
+          fontFamily: template.layout === "statement" ? headingFont : bodyFont,
         }
       : {},
     simpleItem: template.skillStyle === "outline"
-      ? { color: resume.design.textColor, backgroundColor: resume.design.paperColor, borderWidth: 0.75, borderColor: pillBorder, borderRadius: 7.5 }
+      ? { color: resume.design.textColor, backgroundColor: "transparent", borderWidth: 0.75, borderColor: pillBorder, borderRadius: 7.5 }
       : template.skillStyle === "inline" || template.skillStyle === "list"
-        ? { color: resume.design.textColor, backgroundColor: resume.design.paperColor, paddingLeft: 0, paddingRight: 4.5 }
+        ? { color: resume.design.textColor, backgroundColor: "transparent", paddingLeft: 0, paddingRight: 4.5 }
         : { color: resume.design.textColor, backgroundColor: subtleFill, borderRadius: 2.25 },
     photoFrame: {
       position: "absolute",
       top: ["band", "boxed"].includes(template.layout) ? 9 : 0,
       right: ["band", "boxed"].includes(template.layout) ? 10.5 : 0,
-      width: (template.layout === "professional" ? 31 : 28) * MILLIMETRES_TO_POINTS,
-      height: (template.layout === "professional" ? 31 : 28) * MILLIMETRES_TO_POINTS,
+      width: (["professional", "monogram"].includes(template.layout) ? 31 : 28) * MILLIMETRES_TO_POINTS,
+      height: (["professional", "monogram"].includes(template.layout) ? 31 : 28) * MILLIMETRES_TO_POINTS,
       overflow: "hidden",
       borderWidth: 1.5,
       borderColor: resume.design.accentColor,
       borderRadius:
         resume.design.photoShape === "circle"
-          ? (template.layout === "professional" ? 15.5 : 14) * MILLIMETRES_TO_POINTS
+          ? (["professional", "monogram"].includes(template.layout) ? 15.5 : 14) * MILLIMETRES_TO_POINTS
           : resume.design.photoShape === "rounded"
             ? 5 * MILLIMETRES_TO_POINTS
             : 0,

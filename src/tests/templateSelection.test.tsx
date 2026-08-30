@@ -61,18 +61,24 @@ function TemplateHarness() {
 }
 
 describe("template selection", () => {
-  it("registers 54 configurations across fifteen layout families and three tiers", () => {
-    expect(TEMPLATE_DEFINITIONS).toHaveLength(54);
+  it("registers 58 configurations across nineteen layout families and three tiers", () => {
+    expect(TEMPLATE_DEFINITIONS).toHaveLength(58);
     expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "basic")).toHaveLength(18);
     expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "advanced")).toHaveLength(18);
-    expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "premium")).toHaveLength(18);
-    expect(new Set(TEMPLATE_DEFINITIONS.map((template) => template.id))).toHaveLength(54);
-    expect(new Set(TEMPLATE_DEFINITIONS.map((template) => template.layoutFamily))).toHaveLength(15);
+    expect(TEMPLATE_DEFINITIONS.filter((template) => template.category === "premium")).toHaveLength(22);
+    expect(new Set(TEMPLATE_DEFINITIONS.map((template) => template.id))).toHaveLength(58);
+    expect(new Set(TEMPLATE_DEFINITIONS.map((template) => template.layoutFamily))).toHaveLength(19);
     expect(TEMPLATE_REGISTRY.modern).toMatchObject({
       atsRating: "optimized",
       supportsTwoColumns: false,
       supportsPhoto: false,
     });
+    expect(new Set(TEMPLATE_DEFINITIONS.map((template) => template.visualPreset.accentColor)).size)
+      .toBeGreaterThanOrEqual(9);
+    expect(TEMPLATE_REGISTRY.veridian).toMatchObject({ layout: "sidebar", supportsTwoColumns: true });
+    expect(TEMPLATE_REGISTRY.boardroom).toMatchObject({ layout: "statement", audience: "executive" });
+    expect(TEMPLATE_REGISTRY.aperture).toMatchObject({ layout: "showcase", atsRating: "creative" });
+    expect(TEMPLATE_REGISTRY.maison).toMatchObject({ layout: "monogram", supportsPhoto: true });
   });
 
   it("switches presentation without changing resume content", async () => {
@@ -97,6 +103,32 @@ describe("template selection", () => {
       "Preserved Candidate",
     );
     expect(container.querySelector(".selected-template-card")?.textContent).toContain("Modern ATS");
+
+    act(() => root.unmount());
+    container.remove();
+  });
+
+  it("quick-switches templates inside the Design panel without opening the catalog", async () => {
+    const container = document.createElement("div");
+    document.body.append(container);
+    const root = createRoot(container);
+
+    await act(async () => root.render(<TemplateHarness />));
+    const quickSwitcher = Array.from(container.querySelectorAll<HTMLButtonElement>("button"))
+      .find((button) => button.textContent === "Quick switch template");
+    act(() => quickSwitcher?.click());
+
+    const search = container.querySelector<HTMLInputElement>('input[aria-label="Search quick templates"]');
+    if (!search) throw new Error("Quick template search is missing");
+
+    const engineerTemplate = Array.from(container.querySelectorAll<HTMLButtonElement>(".quick-template-card"))
+      .find((button) => button.querySelector(":scope > span > strong")?.textContent === "Engineer");
+    expect(engineerTemplate).toBeDefined();
+    await act(async () => engineerTemplate?.click());
+
+    expect(container.querySelector(".template-engineer")?.textContent).toContain("Preserved Candidate");
+    expect(container.querySelector(".selected-template-card")?.textContent).toContain("Engineer");
+    expect(container.querySelector(".template-catalog-grid")).toBeNull();
 
     act(() => root.unmount());
     container.remove();

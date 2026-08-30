@@ -6,13 +6,14 @@ Folio is a privacy-friendly resume builder that keeps Markdown as the portable s
 
 - Create a resume from a guided blank document.
 - Upload a local `.md` resume up to 5 MB, including an optional embedded profile photo.
+- Follow the built-in import guide to improve a portable `.md` file with an AI assistant or convert an existing resume PDF using the provided Folio Markdown template.
 - Load a complete fictional example.
 - Download a commented Markdown starter template.
 - Edit personal details, summaries, list sections, structured entries, and custom sections.
 - Reorder sections and their entries from the editor or live preview; hide, show, and delete sections.
 - Undo and redo content, design, add/delete, and reorder changes from the header or keyboard.
 - See changes in a live A4 or Letter preview.
-- Browse 54 distinct Basic, Advanced, and Premium resume templates without changing resume content.
+- Browse 58 Basic, Advanced, and Premium resume templates across 19 genuinely different layout systems without changing resume content.
 - Customize resume accent, page, and text colors with contrast guidance.
 - Choose ATS-safe fonts and tune font, bullet, heading, line, letter, section, entry, and page spacing.
 - Upload, replace, crop, zoom, position, shape, hide, or remove an optional local profile photo.

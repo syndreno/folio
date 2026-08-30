@@ -13,6 +13,7 @@ import {
   faArrowRotateRight,
   faCaretLeft,
   faCaretRight,
+  faCircleQuestion,
   faDownload,
 } from "@fortawesome/free-solid-svg-icons";
 import {
@@ -54,12 +55,13 @@ import {
 } from "../services/resumeDraftStore";
 import { SiteFooter } from "../components/SiteFooter";
 import { TemplateCatalogPage } from "../features/templates/TemplateCatalogPage";
+import { ResumeGuidePage } from "../features/guide/ResumeGuidePage";
 
 type EditorTab = "content" | "design" | "ats";
 type MobileView = "editor" | "preview";
 type DesktopPaneLayout = "both" | "editor" | "preview";
 type ExportFormat = "pdf" | "docx" | "png" | "jpeg";
-type ApplicationView = "home" | "templates" | "builder";
+type ApplicationView = "home" | "templates" | "guide" | "builder";
 
 const DEFAULT_WORKSPACE: WorkspaceSettings = {
   accentColor: "#245B4E",
@@ -130,6 +132,7 @@ function readWorkspaceSettings(): WorkspaceSettings {
 function StartScreen({
   onCreate,
   onBrowseTemplates,
+  onOpenGuide,
   onLoadExample,
   onUpload,
   workspace,
@@ -144,6 +147,7 @@ function StartScreen({
 }: {
   onCreate: () => void;
   onBrowseTemplates: () => void;
+  onOpenGuide: () => void;
   onLoadExample: () => void;
   onUpload: (file: File) => void;
   workspace: WorkspaceSettings;
@@ -166,6 +170,9 @@ function StartScreen({
           <span>Folio</span>
         </a>
         <div className="welcome-nav-actions">
+          <button className="welcome-menu-button" type="button" onClick={onOpenGuide}>
+            Guide
+          </button>
           <span className="privacy-note">Private by design · Works in your browser</span>
           <WorkspaceCustomizer workspace={workspace} onChange={onWorkspaceChange} />
         </div>
@@ -260,7 +267,7 @@ function StartScreen({
         <article><span>02</span><h2>Shape the details</h2><p>Edit content live and choose professional colors and ATS-safe typography.</p></article>
         <article><span>03</span><h2>Take it with you</h2><p>Download clean Markdown and return later without relying on a hidden account.</p></article>
       </section>
-      <SiteFooter />
+      <SiteFooter onGuide={onOpenGuide} />
     </main>
   );
 }
@@ -483,6 +490,38 @@ export function App() {
     "--ui-line-height": workspace.lineHeight,
   } as CSSProperties;
 
+  if (applicationView === "guide") {
+    return (
+      <div
+        className="app guide-page-app"
+        data-theme={workspace.themeMode}
+        data-density={workspace.density}
+        data-reduce-motion={workspace.reduceMotion}
+        style={workspaceStyle}
+      >
+        <ResumeGuidePage
+          hasOpenResume={Boolean(resume)}
+          onBack={() => setApplicationView(resume ? "builder" : "home")}
+          onHome={() => {
+            if (resume) {
+              setApplicationView("builder");
+              setShowHomeDialog(true);
+            } else {
+              setApplicationView("home");
+            }
+          }}
+          onUpload={(file) => void handleUpload(file)}
+          headerActions={(
+            <WorkspaceCustomizer
+              workspace={workspace}
+              onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
+            />
+          )}
+        />
+      </div>
+    );
+  }
+
   if (applicationView === "templates") {
     return (
       <div
@@ -506,11 +545,12 @@ export function App() {
           }}
           onUseTemplate={(templateId) => {
             markdownIsCurrentRef.current = false;
+            const visualPreset = TEMPLATE_REGISTRY[templateId].visualPreset;
             if (resume) {
               updateResumeHistory(
                 (current) => ({
                   ...current,
-                  design: { ...current.design, templateId },
+                  design: { ...current.design, templateId, ...visualPreset },
                 }),
                 "design:templateId",
               );
@@ -518,7 +558,7 @@ export function App() {
               const blankResume = createBlankResume();
               loadResume({
                 ...blankResume,
-                design: { ...blankResume.design, templateId },
+                design: { ...blankResume.design, templateId, ...visualPreset },
               });
               setWarnings([]);
             }
@@ -526,11 +566,21 @@ export function App() {
             setDesktopPaneLayout("both");
             setApplicationView("builder");
           }}
+          onGuide={() => setApplicationView("guide")}
           headerActions={(
-            <WorkspaceCustomizer
-              workspace={workspace}
-              onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
-            />
+            <>
+              <button
+                className="secondary-button compact-button template-guide-button"
+                type="button"
+                onClick={() => setApplicationView("guide")}
+              >
+                Guide
+              </button>
+              <WorkspaceCustomizer
+                workspace={workspace}
+                onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
+              />
+            </>
           )}
         />
       </div>
@@ -570,6 +620,7 @@ export function App() {
             setApplicationView("builder");
           }}
           onBrowseTemplates={() => setApplicationView("templates")}
+          onOpenGuide={() => setApplicationView("guide")}
           onLoadExample={loadExample}
           onUpload={handleUpload}
           workspace={workspace}
@@ -1158,6 +1209,15 @@ export function App() {
             workspace={workspace}
             onChange={(patch) => setWorkspace((current) => ({ ...current, ...patch }))}
           />
+          <button
+            className="icon-button"
+            type="button"
+            aria-label="Open resume guide"
+            title="Resume import guide"
+            onClick={() => setApplicationView("guide")}
+          >
+            <FontAwesomeIcon icon={faCircleQuestion} aria-hidden="true" />
+          </button>
           <button className="secondary-button compact-button" type="button" onClick={() => uploadRef.current?.click()}>
             Upload .md
           </button>
@@ -1306,7 +1366,7 @@ export function App() {
                 <AtsPanel resume={resume} />
               </Suspense>
             )}
-            <SiteFooter compact />
+            <SiteFooter compact onGuide={() => setApplicationView("guide")} />
           </div>
         </aside>
 
@@ -1324,7 +1384,7 @@ export function App() {
                 onSectionSelect={selectSectionFromPreview}
               />
             </Suspense>
-            <SiteFooter compact />
+            <SiteFooter compact onGuide={() => setApplicationView("guide")} />
           </div>
         </section>
       </main>

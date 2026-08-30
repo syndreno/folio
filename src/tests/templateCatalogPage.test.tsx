@@ -21,7 +21,7 @@ describe("template catalog page", () => {
     ));
 
     expect(container.querySelector(".template-catalog-grid")).not.toBeNull();
-    expect(container.textContent).toContain("54 templates");
+    expect(container.textContent).toContain("58 templates");
     expect(container.querySelector(".template-miniature")?.textContent).toContain("Maya Chen");
     expect(container.querySelector(".template-miniature")?.textContent).toContain("Experience");
     expect(container.querySelector(".template-miniature")?.textContent).toContain("Education");

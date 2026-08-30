@@ -10,13 +10,15 @@ Filename: `name-resume.md`.
 
 ## ATS PDF
 
-The PDF pipeline builds a text document with `@react-pdf/renderer`; it does not take a screenshot of the resume. It maps the selected template's header, section rules, pills, photo treatment, colors, typography, and spacing to the PDF layout. Text remains selectable and searchable, links remain links, visible sections follow logical reading order, and long entries flow across A4 or Letter pages. Standard fonts and single-column structures are used for ATS templates.
+The PDF pipeline builds a text document with `@react-pdf/renderer`; it does not take a screenshot of the resume. It maps the selected template's header, section rules, pills, photo treatment, colors, typography, and spacing to the PDF layout. Text remains selectable and searchable, links remain links, visible sections follow logical reading order, and long entries flow across A4 or Letter pages. Automatic dictionary hyphenation is disabled so headings and keywords remain complete when copied into ATS or plain-text tools. Standard fonts and single-column structures are used for ATS templates.
 
 Filename: `name-resume.pdf`.
 
 ## Word DOCX
 
-The DOCX pipeline creates real Office Open XML paragraphs, heading styles, bullet numbering, hyperlinks, page dimensions, and margins. It maps the selected Classic, Modern, or Professional template to editable Word styling, including its header treatment, section rules, colors, fonts, spacing, and supported Professional photo. The result remains editable in Microsoft Word and prioritizes ATS-readable document flow; decorative content is never required for interpreting it.
+The DOCX pipeline creates real Office Open XML paragraphs, heading styles, bullet numbering, hyperlinks, page dimensions, margins, and supported photos. Every catalog template maps its layout family, header treatment, section rules, colors, typography, spacing, columns, entry hierarchy, and skill treatment to editable Word content. List skills use tabbed paragraphs, functional skills use paired paragraph rows, and technology proficiency bars use shaded text runs, so these treatments do not expose Word table grids. Chip and outline skills use inline rounded Word shapes with real editable text and template-aware fill, border, padding, and typography.
+
+The exporter preserves native document flow and pagination rather than embedding a screenshot. Decorative structure is never required to understand the resume, and the result remains editable in Microsoft Word.
 
 Filename: `name-resume.docx`.
 

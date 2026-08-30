@@ -52,6 +52,95 @@ describe("DOCX export", () => {
     expect(stylesXml).toContain('w:color w:val="2F6FED"');
   });
 
+  it("starts inline skill lists with a bullet marker", async () => {
+    const resume = createBlankResume();
+    resume.design.templateId = "classic";
+    const skills = resume.sections.find((section) => section.type === "skills");
+    if (!skills) throw new Error("Skills fixture is missing");
+    skills.items = [{ ...createEmptyItem(), title: "TypeScript" }];
+
+    const zip = await JSZip.loadAsync(await (await buildResumeDocxBlob(resume)).arrayBuffer());
+    const documentXml = await zip.file("word/document.xml")?.async("string");
+    const skillPosition = documentXml?.indexOf("TypeScript") ?? -1;
+
+    expect(skillPosition).toBeGreaterThan(0);
+    expect(documentXml?.slice(Math.max(0, skillPosition - 250), skillPosition)).toContain("\u2022");
+  });
+
+  it("preserves skill layouts without exposing skill tables in Word", async () => {
+    const exportSkillsForTemplate = async (
+      templateId: "clean-slate" | "graduate" | "ledger" | "engineer",
+    ) => {
+      const resume = createBlankResume();
+      resume.design.templateId = templateId;
+      resume.sections.forEach((section) => {
+        section.visible = section.type === "skills";
+      });
+      const skills = resume.sections.find((section) => section.type === "skills");
+      if (!skills) throw new Error("Skills fixture is missing");
+      skills.items = ["TypeScript", "React", "Node.js", "PostgreSQL"].map((title) => ({
+        ...createEmptyItem(),
+        title,
+      }));
+
+      const zip = await JSZip.loadAsync(await (await buildResumeDocxBlob(resume)).arrayBuffer());
+      return await zip.file("word/document.xml")?.async("string") ?? "";
+    };
+
+    const listXml = await exportSkillsForTemplate("clean-slate");
+    expect(listXml).not.toContain("<w:tbl>");
+    expect(listXml).toContain("<w:tabs>");
+    expect(listXml.match(/\u2022/g)).toHaveLength(4);
+    expect(listXml).not.toContain("w:numPr");
+
+    const chipsXml = await exportSkillsForTemplate("graduate");
+    expect(chipsXml).not.toContain("<w:tbl>");
+    expect(chipsXml.match(/a:prstGeom prst="roundRect"/g)).toHaveLength(4);
+    expect(chipsXml).toContain('<a:gd name="adj" fmla="val 50000"/>');
+    expect(chipsXml).toContain("<w:txbxContent>");
+    expect(chipsXml).toContain("<a:solidFill>");
+    expect(chipsXml).not.toContain("w:numPr");
+
+    const outlineXml = await exportSkillsForTemplate("ledger");
+    expect(outlineXml).not.toContain("<w:tbl>");
+    expect(outlineXml.match(/a:prstGeom prst="roundRect"/g)).toHaveLength(4);
+    expect(outlineXml).toContain("<a:ln");
+    expect(outlineXml).toContain(">TypeScript</w:t>");
+    expect(outlineXml).not.toContain("w:numPr");
+
+    const techXml = await exportSkillsForTemplate("engineer");
+    expect(techXml.match(/<w:tbl>/g)).toHaveLength(2);
+    expect(techXml).toContain("TypeScript");
+    expect(techXml).toContain("<w:shd");
+    expect(techXml).not.toContain("w:numPr");
+  });
+
+  it("adds internal padding to every shaded section-heading treatment", async () => {
+    const cases = [
+      { templateId: "ledger" as const, sectionType: "summary", heading: "Professional Summary" },
+      { templateId: "retail" as const, sectionType: "summary", heading: "Professional Summary" },
+      { templateId: "graduate" as const, sectionType: "education", heading: "Education" },
+    ];
+
+    for (const testCase of cases) {
+      const resume = createBlankResume();
+      resume.design.templateId = testCase.templateId;
+      resume.sections.forEach((section) => {
+        section.visible = section.type === testCase.sectionType;
+      });
+
+      const zip = await JSZip.loadAsync(await (await buildResumeDocxBlob(resume)).arrayBuffer());
+      const documentXml = await zip.file("word/document.xml")?.async("string") ?? "";
+      const headingPosition = documentXml.indexOf(testCase.heading);
+      const headingXml = documentXml.slice(Math.max(0, headingPosition - 1_000), headingPosition + 200);
+
+      expect(headingPosition, testCase.templateId).toBeGreaterThan(0);
+      expect(headingXml, testCase.templateId).toContain("<w:shd");
+      expect(headingXml, testCase.templateId).toContain('w:space="3"');
+      expect(headingXml, testCase.templateId).toContain(`\u00A0${testCase.heading}\u00A0`);
+    }
+  });
+
   it("embeds the optional Professional template photo without rasterizing text", async () => {
     const resume = createBlankResume();
     resume.design.templateId = "professional";

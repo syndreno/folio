@@ -1,5 +1,6 @@
 import {
   Document,
+  Font,
   Image,
   Link,
   Page,
@@ -13,8 +14,14 @@ import type { IconDefinition } from "@fortawesome/fontawesome-svg-core";
 import {
   getResumeTemplate,
   getTemplateDensityFactor,
+  type TemplateLayout,
+  type TemplateSkillStyle,
 } from "../../../constants/resumeTemplates";
-import type { ResumeDocument, ResumeSectionItem } from "../../../domain/resume.types";
+import type {
+  ResumeDocument,
+  ResumeSectionItem,
+  ResumeSectionType,
+} from "../../../domain/resume.types";
 import { getFontAwesomeIconDefinition } from "../../icons/fontAwesomeRegistry";
 import { createPdfContactIconData } from "./pdfContactIcon";
 import {
@@ -22,6 +29,11 @@ import {
   MILLIMETRES_TO_POINTS,
   pdfFontFamily,
 } from "./pdfTemplateStyles";
+
+// Resume text must copy cleanly into ATS/plain-text tools. The renderer's
+// dictionary hyphenation can split headings and keywords into different text
+// tokens (for example, "Certifica- tions"), so preserve complete words.
+Font.registerHyphenationCallback((word) => [word]);
 
 const styles = StyleSheet.create({
   page: {},
@@ -94,6 +106,73 @@ const styles = StyleSheet.create({
     paddingLeft: 6,
     fontSize: 9,
   },
+  simpleListColumns: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    rowGap: 3,
+  },
+  simpleListRow: {
+    width: "50%",
+    flexDirection: "row",
+    alignItems: "flex-start",
+    paddingTop: 0.75,
+    paddingRight: 6,
+    paddingBottom: 0.75,
+  },
+  simpleListMarker: { width: 9 },
+  simpleListText: {
+    flexGrow: 1,
+    flexBasis: 0,
+    fontSize: 9,
+  },
+  inlineSimpleText: { fontSize: 9 },
+  functionalSkillItem: {
+    width: "48%",
+    borderRadius: 0,
+  },
+  techSkillList: { gap: 0 },
+  techSkillRow: {
+    width: "100%",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingTop: 3,
+    paddingBottom: 3,
+    borderBottomWidth: 0.5,
+  },
+  techSkillText: {
+    flexGrow: 1,
+    flexBasis: 0,
+    paddingRight: 6,
+    fontSize: 8.5,
+  },
+  techSkillTrack: {
+    width: 26,
+    height: 3,
+  },
+  numberedHeading: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginBottom: 5.25,
+  },
+  numberedBadge: {
+    width: 15,
+    height: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 7.5,
+  },
+  numberedBadgeText: {
+    color: "#FFFFFF",
+    fontSize: 6,
+    fontWeight: 700,
+  },
+  portfolioGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 7.5,
+  },
   twoColumnBody: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -161,6 +240,134 @@ const styles = StyleSheet.create({
     paddingBottom: 9,
     paddingLeft: 10,
   },
+  splitHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingBottom: 9,
+    borderBottomWidth: 1.5,
+  },
+  splitCopy: {
+    flexGrow: 1,
+    flexBasis: 0,
+    flexDirection: "row",
+    alignItems: "flex-end",
+    gap: 18,
+  },
+  splitIdentity: {
+    width: "55%",
+    justifyContent: "center",
+  },
+  splitDetails: {
+    width: "45%",
+    alignItems: "flex-end",
+  },
+  splitContacts: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 4.5,
+  },
+  splitPhotoFrame: {
+    width: 79.4,
+    height: 79.4,
+    marginLeft: 12,
+    overflow: "hidden",
+  },
+  sidebarHeader: {
+    flexDirection: "row",
+    alignItems: "stretch",
+    borderBottomWidth: 1.5,
+  },
+  sidebarIdentity: {
+    width: "42%",
+    justifyContent: "center",
+    paddingTop: 10,
+    paddingRight: 11,
+    paddingBottom: 10,
+    paddingLeft: 11,
+  },
+  sidebarContacts: {
+    flexGrow: 1,
+    flexBasis: 0,
+    justifyContent: "center",
+    alignItems: "flex-start",
+    gap: 3.5,
+    paddingTop: 8,
+    paddingRight: 10,
+    paddingBottom: 8,
+    paddingLeft: 10,
+  },
+  compactHeaderPhoto: {
+    width: 72,
+    height: 72,
+    marginTop: 7,
+    marginRight: 7,
+    marginBottom: 7,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderRadius: 36,
+  },
+  statementHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingTop: 12,
+    paddingRight: 13,
+    paddingBottom: 12,
+    paddingLeft: 13,
+  },
+  statementIdentity: {
+    width: "62%",
+  },
+  statementDetails: {
+    width: "38%",
+    alignItems: "flex-end",
+    gap: 3.5,
+  },
+  showcaseHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    paddingTop: 9,
+    paddingRight: 10,
+    paddingBottom: 9,
+    paddingLeft: 10,
+    borderBottomWidth: 3.75,
+  },
+  showcaseIdentity: {
+    flexGrow: 1,
+    flexBasis: 0,
+  },
+  showcaseContacts: {
+    width: "34%",
+    alignItems: "flex-end",
+    gap: 3.5,
+  },
+  showcasePhoto: {
+    width: 74,
+    height: 84,
+    overflow: "hidden",
+    borderRadius: 5,
+  },
+  monogramHeader: {
+    alignItems: "center",
+    paddingBottom: 10,
+    borderBottomWidth: 2.25,
+  },
+  monogramPhoto: {
+    width: 82,
+    height: 82,
+    marginBottom: 7,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderRadius: 41,
+  },
+  monogramContacts: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    columnGap: 8,
+    rowGap: 2.5,
+  },
 });
 
 function mixHexColors(foreground: string, background: string, foregroundRatio: number): string {
@@ -220,32 +427,238 @@ function PdfEntry({
   accentColor,
   bulletSize,
   entrySpacing,
-  isFirst,
+  layout,
+  sectionType,
+  paperColor,
+  textColor,
 }: {
   item: ResumeSectionItem;
   accentColor: string;
   bulletSize: number;
   entrySpacing: number;
-  isFirst: boolean;
+  layout: TemplateLayout;
+  sectionType: ResumeSectionType;
+  paperColor: string;
+  textColor: string;
 }) {
+  const timelineEntry = layout === "rail" || layout === "professional";
+  const statementEntry = layout === "statement";
+  const ruledEntry = layout === "tech" || layout === "healthcare";
+  const portfolioProject = (layout === "portfolio" || layout === "showcase")
+    && sectionType === "projects";
+  const centeredEntry = layout === "student"
+    && (sectionType === "education" || sectionType === "projects");
+  const subtleRule = mixHexColors(accentColor, paperColor, 0.32);
+  const subtleFill = mixHexColors(accentColor, paperColor, 0.055);
+
   return (
-    <View style={[styles.entry, { marginTop: isFirst ? 0 : entrySpacing }]}>
-      <View style={styles.entryHeading} minPresenceAhead={20}>
-        <Text style={styles.entryTitle}>{item.title}</Text>
-        {item.meta && <Text style={styles.entryMeta}>{item.meta}</Text>}
+    <View
+      style={[
+        styles.entry,
+        { paddingBottom: entrySpacing },
+        timelineEntry ? {
+          position: "relative",
+          marginLeft: 3,
+          paddingLeft: 9.75,
+          borderLeftWidth: 0.75,
+          borderLeftColor: subtleRule,
+        } : {},
+        ruledEntry ? {
+          paddingLeft: 7.5,
+          borderLeftWidth: 1.5,
+          borderLeftColor: subtleRule,
+        } : {},
+        statementEntry ? {
+          position: "relative",
+          paddingLeft: 82,
+        } : {},
+        portfolioProject ? {
+          width: "48%",
+          paddingTop: 6.75,
+          paddingRight: 6.75,
+          paddingBottom: 6.75,
+          paddingLeft: 6.75,
+          backgroundColor: subtleFill,
+          borderWidth: 0.75,
+          borderColor: subtleRule,
+        } : {},
+        centeredEntry ? { alignItems: "center", textAlign: "center" } : {},
+      ]}
+    >
+      {timelineEntry && (
+        <View
+          style={{
+            position: "absolute",
+            top: 2,
+            left: -3.5,
+            width: 7,
+            height: 7,
+            backgroundColor: paperColor,
+            borderWidth: 1.5,
+            borderColor: accentColor,
+            borderRadius: 3.5,
+          }}
+        />
+      )}
+      {statementEntry && (
+        <View
+          style={{
+            position: "absolute",
+            top: 3,
+            left: 74,
+            width: 6,
+            height: 6,
+            backgroundColor: accentColor,
+            borderRadius: 3,
+          }}
+        />
+      )}
+      <View
+        style={[
+          styles.entryHeading,
+          centeredEntry || portfolioProject
+            ? { flexDirection: "column", alignItems: centeredEntry ? "center" : "flex-start", gap: 1.5 }
+            : {},
+        ]}
+        minPresenceAhead={20}
+      >
+        <Text style={[styles.entryTitle, { color: textColor }]}>{item.title}</Text>
+        {item.meta && (
+          <Text
+            style={[
+              styles.entryMeta,
+              statementEntry ? {
+                position: "absolute",
+                top: 0,
+                left: -82,
+                width: 70,
+                color: accentColor,
+                fontWeight: 700,
+              } : {},
+            ]}
+          >
+            {item.meta}
+          </Text>
+        )}
       </View>
-      {item.subtitle && <Text style={[styles.subtitle, { color: accentColor }]}>{item.subtitle}</Text>}
+      {item.subtitle && (
+        <Text
+          style={[
+            styles.subtitle,
+            {
+              color: accentColor,
+              textAlign: centeredEntry ? "center" : "left",
+              textTransform: layout === "tech" ? "uppercase" : "none",
+              letterSpacing: layout === "tech" ? 0.4 : 0,
+            },
+          ]}
+        >
+          {item.subtitle}
+        </Text>
+      )}
       {item.description && <Text style={styles.description}>{item.description}</Text>}
       {item.bullets.length > 0 && (
         <View style={styles.bulletList}>
           {item.bullets.map((bullet, index) => (
             <View style={styles.bulletRow} key={`${item.id}-${index}`} wrap>
-              <Text style={[styles.bulletMarker, { color: accentColor, fontSize: bulletSize }]}>•</Text>
+              <Text style={[styles.bulletMarker, { color: accentColor, fontSize: bulletSize }]}>{"\u2022"}</Text>
               <Text style={styles.bulletText} orphans={2} widows={2}>{bullet}</Text>
             </View>
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+function PdfSimpleItems({
+  items,
+  skillStyle,
+  layout,
+  sectionType,
+  accentColor,
+  paperColor,
+  bulletSize,
+  itemStyle,
+}: {
+  items: ResumeSectionItem[];
+  skillStyle: TemplateSkillStyle;
+  layout: TemplateLayout;
+  sectionType: ResumeSectionType;
+  accentColor: string;
+  paperColor: string;
+  bulletSize: number;
+  itemStyle: ReturnType<typeof createPdfTemplateStyles>["simpleItem"];
+}) {
+  const subtleRule = mixHexColors(accentColor, paperColor, 0.28);
+
+  if (layout === "tech" && sectionType === "skills") {
+    return (
+      <View style={[styles.simpleList, styles.techSkillList]}>
+        {items.map((item, index) => {
+          const proficiency = [0.72, 0.86, 0.62][index % 3] ?? 0.72;
+          return (
+            <View style={[styles.techSkillRow, { borderBottomColor: subtleRule }]} key={item.id}>
+              <Text style={styles.techSkillText}>{item.title}</Text>
+              <View style={[styles.techSkillTrack, { backgroundColor: subtleRule }]}>
+                <View
+                  style={{
+                    width: 26 * proficiency,
+                    height: 3,
+                    backgroundColor: accentColor,
+                  }}
+                />
+              </View>
+            </View>
+          );
+        })}
+      </View>
+    );
+  }
+
+  if (skillStyle === "list") {
+    return (
+      <View style={styles.simpleListColumns}>
+        {items.map((item) => (
+          <View style={styles.simpleListRow} key={item.id}>
+            <Text style={[styles.simpleListMarker, { color: accentColor, fontSize: bulletSize }]}>{"\u2022"}</Text>
+            <Text style={styles.simpleListText}>{item.title}</Text>
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (skillStyle === "inline") {
+    return (
+      <Text style={styles.inlineSimpleText}>
+        {items.map((item, index) => (
+          <Text key={item.id}>
+            {index > 0 ? "   " : ""}
+            <Text style={{ color: accentColor, fontSize: bulletSize }}>{"\u2022"}</Text>
+            {`  ${item.title}`}
+          </Text>
+        ))}
+      </Text>
+    );
+  }
+
+  return (
+    <View style={styles.simpleList}>
+      {items.map((item) => (
+        <Text
+          key={item.id}
+          style={[
+            styles.simpleItem,
+            itemStyle,
+            layout === "functional" && sectionType === "skills"
+              ? styles.functionalSkillItem
+              : {},
+          ]}
+        >
+          {item.title}
+        </Text>
+      ))}
     </View>
   );
 }
@@ -279,33 +692,49 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
     })),
   ].filter((contact) => contact.value);
   const sidebarSectionTypes = new Set(["skills", "certifications", "languages", "interests", "awards"]);
-  const usesTwoColumns = ["professional", "functional", "tech"].includes(selectedTemplate.layout);
+  const usesTwoColumns = [
+    "professional",
+    "functional",
+    "tech",
+    "sidebar",
+    "showcase",
+    "monogram",
+  ].includes(selectedTemplate.layout);
   const indexedSections = sections.map((section, sectionIndex) => ({ section, sectionIndex }));
   const summarySections = usesTwoColumns
     ? indexedSections.filter(({ section }) => section.type === "summary")
     : [];
+  const isSidebarSection = (section: ResumeDocument["sections"][number]) => (
+    sidebarSectionTypes.has(section.type)
+    || (selectedTemplate.layout === "monogram" && section.type === "education")
+  );
   const mainSections = indexedSections.filter(({ section }) => (
-    section.type !== "summary" && !sidebarSectionTypes.has(section.type)
+    section.type !== "summary" && !isSidebarSection(section)
   ));
   const sidebarSections = indexedSections.filter(({ section }) => (
-    section.type !== "summary" && sidebarSectionTypes.has(section.type)
+    section.type !== "summary" && isSidebarSection(section)
   ));
   const sidebarFill = mixHexColors(resume.design.accentColor, resume.design.paperColor, 0.08);
 
-  const renderContacts = (color: string, iconColor: string) => contacts.map((contact, index) => (
-    <PdfContact
-      key={`${contact.value}-${index}`}
-      value={contact.value}
-      href={contact.href}
-      color={color}
-      accentColor={iconColor}
-      icon={
-        resume.design.showContactIcons
-          ? getFontAwesomeIconDefinition(contact.iconUrl)
-          : undefined
-      }
-    />
-  ));
+  const renderContacts = (color: string, iconColor: string) => contacts.flatMap(
+    (contact, index) => [
+      ...(!resume.design.showContactIcons && index > 0
+        ? [<Text key={`separator-${contact.value}-${index}`} style={{ color: iconColor }}>{"\u2022"}</Text>]
+        : []),
+      <PdfContact
+        key={`${contact.value}-${index}`}
+        value={contact.value}
+        href={contact.href}
+        color={color}
+        accentColor={iconColor}
+        icon={
+          resume.design.showContactIcons
+            ? getFontAwesomeIconDefinition(contact.iconUrl)
+            : undefined
+        }
+      />,
+    ],
+  );
 
   const renderSection = (
     section: ResumeDocument["sections"][number],
@@ -332,17 +761,28 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
         ]}
         key={section.id}
       >
-        <Text
-          style={[
-            templateStyles.sectionTitle,
-            centeredSection ? templateStyles.centeredSectionTitle : {},
-          ]}
-          minPresenceAhead={28}
-        >
-          {selectedTemplate.sectionStyle === "numbered"
-            ? `${String(sectionIndex + 1).padStart(2, "0")}  ${section.title}`
-            : section.title}
-        </Text>
+        {selectedTemplate.sectionStyle === "numbered" ? (
+          <View style={styles.numberedHeading} minPresenceAhead={28}>
+            <View style={[styles.numberedBadge, { backgroundColor: resume.design.accentColor }]}>
+              <Text style={styles.numberedBadgeText}>
+                {String(sectionIndex + 1).padStart(2, "0")}
+              </Text>
+            </View>
+            <Text style={[templateStyles.sectionTitle, { flexGrow: 1, marginBottom: 0 }]}>
+              {section.title}
+            </Text>
+          </View>
+        ) : (
+          <Text
+            style={[
+              templateStyles.sectionTitle,
+              centeredSection ? templateStyles.centeredSectionTitle : {},
+            ]}
+            minPresenceAhead={28}
+          >
+            {section.title}
+          </Text>
+        )}
         <View
           style={[
             templateStyles.sectionContent,
@@ -355,24 +795,38 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
             </Text>
           )}
           {simpleItems ? (
-            <View style={styles.simpleList}>
+            <PdfSimpleItems
+              items={section.items}
+              skillStyle={selectedTemplate.skillStyle}
+              layout={selectedTemplate.layout}
+              sectionType={section.type}
+              accentColor={resume.design.accentColor}
+              paperColor={resume.design.paperColor}
+              bulletSize={resume.design.bulletSize}
+              itemStyle={templateStyles.simpleItem}
+            />
+          ) : (
+            <View
+              style={
+                ["portfolio", "showcase"].includes(selectedTemplate.layout) && section.type === "projects"
+                  ? styles.portfolioGrid
+                  : {}
+              }
+            >
               {section.items.map((item) => (
-                <Text key={item.id} style={[styles.simpleItem, templateStyles.simpleItem]}>
-                  {selectedTemplate.skillStyle === "list" ? `• ${item.title}` : item.title}
-                </Text>
+                <PdfEntry
+                  key={item.id}
+                  item={item}
+                  accentColor={resume.design.accentColor}
+                  bulletSize={resume.design.bulletSize}
+                  entrySpacing={resume.design.entrySpacing * densityFactor}
+                  layout={selectedTemplate.layout}
+                  sectionType={section.type}
+                  paperColor={resume.design.paperColor}
+                  textColor={resume.design.textColor}
+                />
               ))}
             </View>
-          ) : (
-            section.items.map((item, index) => (
-              <PdfEntry
-                key={item.id}
-                item={item}
-                accentColor={resume.design.accentColor}
-                bulletSize={resume.design.bulletSize}
-                entrySpacing={resume.design.entrySpacing * densityFactor}
-                isFirst={index === 0}
-              />
-            ))
           )}
         </View>
       </View>
@@ -435,6 +889,106 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
               {renderContacts("#FFFFFF", "#FFFFFF")}
             </View>
           </View>
+        ) : selectedTemplate.layout === "sidebar" ? (
+          <View style={[styles.sidebarHeader, { borderBottomColor: resume.design.accentColor }]}>
+            <View style={[styles.sidebarIdentity, { backgroundColor: resume.design.accentColor }]}>
+              <Text style={[templateStyles.name, { color: "#FFFFFF" }]}>{resume.personal.fullName}</Text>
+              <Text style={[templateStyles.role, { color: "#FFFFFF" }]}>{resume.personal.professionalTitle}</Text>
+            </View>
+            <View style={styles.sidebarContacts}>
+              {renderContacts(resume.design.textColor, resume.design.accentColor)}
+            </View>
+            {showPhoto && (
+              <View style={[styles.compactHeaderPhoto, { borderColor: resume.design.accentColor }]}>
+                <Image src={resume.personal.photo} style={templateStyles.photo} />
+              </View>
+            )}
+          </View>
+        ) : selectedTemplate.layout === "statement" ? (
+          <View
+            style={[
+              styles.statementHeader,
+              { backgroundColor: mixHexColors(resume.design.accentColor, "#111827", 0.76) },
+            ]}
+          >
+            <View style={styles.statementIdentity}>
+              <Text style={[templateStyles.name, { color: "#FFFFFF" }]}>{resume.personal.fullName}</Text>
+            </View>
+            <View style={styles.statementDetails}>
+              <Text style={[templateStyles.role, { color: "#FFFFFF", textAlign: "right" }]}>
+                {resume.personal.professionalTitle}
+              </Text>
+              {renderContacts("#FFFFFF", "#FFFFFF")}
+            </View>
+          </View>
+        ) : selectedTemplate.layout === "showcase" ? (
+          <View
+            style={[
+              styles.showcaseHeader,
+              {
+                backgroundColor: sidebarFill,
+                borderBottomColor: resume.design.accentColor,
+              },
+            ]}
+          >
+            {showPhoto && (
+              <View style={styles.showcasePhoto}>
+                <Image src={resume.personal.photo} style={templateStyles.photo} />
+              </View>
+            )}
+            <View style={styles.showcaseIdentity}>
+              <Text style={[templateStyles.name, { color: resume.design.textColor }]}>{resume.personal.fullName}</Text>
+              <Text style={[templateStyles.role, { color: resume.design.accentColor }]}>{resume.personal.professionalTitle}</Text>
+            </View>
+            <View style={styles.showcaseContacts}>
+              {renderContacts(resume.design.textColor, resume.design.accentColor)}
+            </View>
+          </View>
+        ) : selectedTemplate.layout === "monogram" ? (
+          <View style={[styles.monogramHeader, { borderBottomColor: resume.design.accentColor }]}>
+            {showPhoto && (
+              <View style={[styles.monogramPhoto, { borderColor: resume.design.accentColor }]}>
+                <Image src={resume.personal.photo} style={templateStyles.photo} />
+              </View>
+            )}
+            <Text style={[templateStyles.name, { color: resume.design.accentColor }]}>{resume.personal.fullName}</Text>
+            <Text style={templateStyles.role}>{resume.personal.professionalTitle}</Text>
+            <View style={styles.monogramContacts}>
+              {renderContacts(resume.design.textColor, resume.design.accentColor)}
+            </View>
+          </View>
+        ) : selectedTemplate.layout === "split" ? (
+          <View style={[styles.splitHeader, { borderBottomColor: resume.design.accentColor }]}>
+            <View style={styles.splitCopy}>
+              <View style={styles.splitIdentity}>
+                <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
+              </View>
+              <View style={styles.splitDetails}>
+                <Text style={[templateStyles.role, { textAlign: "right" }]}>
+                  {resume.personal.professionalTitle}
+                </Text>
+                <View style={styles.splitContacts}>
+                  {renderContacts(resume.design.textColor, resume.design.accentColor)}
+                </View>
+              </View>
+            </View>
+            {showPhoto && (
+              <View
+                style={[
+                  styles.splitPhotoFrame,
+                  {
+                    borderWidth: 1.5,
+                    borderColor: resume.design.accentColor,
+                    borderRadius: resume.design.photoShape === "circle"
+                      ? 39.7
+                      : resume.design.photoShape === "rounded" ? 14 : 0,
+                  },
+                ]}
+              >
+                <Image src={resume.personal.photo} style={templateStyles.photo} />
+              </View>
+            )}
+          </View>
         ) : (
           <View style={templateStyles.header}>
             <Text style={templateStyles.name}>{resume.personal.fullName}</Text>
@@ -449,24 +1003,48 @@ export function ResumePdfDocument({ resume }: { resume: ResumeDocument }) {
             )}
           </View>
         )}
+        {selectedTemplate.layout === "healthcare" && (
+          <View
+            style={{
+              height: 0.75,
+              marginTop: 1.5,
+              backgroundColor: resume.design.accentColor,
+            }}
+          />
+        )}
 
         {usesTwoColumns ? (
           <>
             {summarySections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
             <View style={styles.twoColumnBody} wrap>
-              {selectedTemplate.layout === "functional" && (
-                <View style={[styles.sideColumn, { backgroundColor: sidebarFill }]}>
-                  {sidebarSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
-                </View>
-              )}
-              <View style={styles.mainColumn}>
-                {mainSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
-              </View>
-              {selectedTemplate.layout !== "functional" && (
+              {(selectedTemplate.layout === "functional" || selectedTemplate.layout === "sidebar") && (
                 <View
                   style={[
                     styles.sideColumn,
                     { backgroundColor: sidebarFill },
+                    selectedTemplate.layout === "sidebar" ? { width: "32%" } : {},
+                  ]}
+                >
+                  {sidebarSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
+                </View>
+              )}
+              <View
+                style={[
+                  styles.mainColumn,
+                  selectedTemplate.layout === "monogram" ? { width: "55%" } : {},
+                  selectedTemplate.layout === "sidebar" ? { width: "68%" } : {},
+                  selectedTemplate.layout === "showcase" ? { width: "63%" } : {},
+                ]}
+              >
+                {mainSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}
+              </View>
+              {selectedTemplate.layout !== "functional" && selectedTemplate.layout !== "sidebar" && (
+                <View
+                  style={[
+                    styles.sideColumn,
+                    { backgroundColor: sidebarFill },
+                    selectedTemplate.layout === "monogram" ? { width: "45%" } : {},
+                    selectedTemplate.layout === "showcase" ? { width: "37%" } : {},
                   ]}
                 >
                   {sidebarSections.map(({ section, sectionIndex }) => renderSection(section, sectionIndex))}

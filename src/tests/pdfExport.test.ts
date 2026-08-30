@@ -99,6 +99,55 @@ describe("ATS PDF export", () => {
     await loadingTask.destroy();
   }, 15_000);
 
+  it("renders list bullets as separately padded markers without white item boxes", async () => {
+    const resume = createBlankResume();
+    resume.design.templateId = "healthcare-basic";
+    resume.design.showContactIcons = false;
+    const templateStyles = createPdfTemplateStyles(resume);
+
+    expect(templateStyles.highlightedSectionContent).toMatchObject({
+      paddingTop: 6,
+      paddingRight: 7.5,
+      paddingBottom: 6,
+      paddingLeft: 7.5,
+    });
+    expect(templateStyles.simpleItem).toMatchObject({ backgroundColor: "transparent" });
+
+    const bytes = new Uint8Array(await (await buildResumePdfBlob(resume)).arrayBuffer());
+    const loadingTask = getDocument({ data: bytes, useSystemFonts: true });
+    const document = await loadingTask.promise;
+    const text = await (await document.getPage(1)).getTextContent();
+    const extractedItems = text.items
+      .filter((item): item is typeof item & { str: string } => "str" in item)
+      .map((item) => item.str);
+
+    expect(extractedItems).toContain("•");
+    expect(extractedItems).toContain("New entry");
+    expect(extractedItems).not.toContain("• New entry");
+    await loadingTask.destroy();
+  }, 15_000);
+
+  it("starts inline skill lists with a bullet marker", async () => {
+    const resume = createBlankResume();
+    resume.design.templateId = "classic";
+    resume.design.showContactIcons = false;
+    const skills = resume.sections.find((section) => section.type === "skills");
+    if (!skills) throw new Error("Skills fixture is missing");
+    skills.items = [{ ...createEmptyItem(), title: "TypeScript" }];
+
+    const bytes = new Uint8Array(await (await buildResumePdfBlob(resume)).arrayBuffer());
+    const loadingTask = getDocument({ data: bytes, useSystemFonts: true });
+    const document = await loadingTask.promise;
+    const text = await (await document.getPage(1)).getTextContent();
+    const extractedText = text.items
+      .filter((item): item is typeof item & { str: string } => "str" in item)
+      .map((item) => item.str)
+      .join("");
+
+    expect(extractedText).toMatch(/\u2022\s*TypeScript/);
+    await loadingTask.destroy();
+  }, 15_000);
+
   it("creates selectable text across two or more pages without dropping content", async () => {
     const resume = createBlankResume();
     resume.design.templateId = "modern";

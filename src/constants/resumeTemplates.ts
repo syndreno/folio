@@ -14,7 +14,11 @@ export type TemplateLayout =
   | "tech"
   | "portfolio"
   | "healthcare"
-  | "professional";
+  | "professional"
+  | "sidebar"
+  | "statement"
+  | "showcase"
+  | "monogram";
 export type TemplateSectionStyle =
   | "rule"
   | "plain"
@@ -101,6 +105,10 @@ export const TEMPLATE_CATALOG = [
   { id: "luminous", name: "Luminous", category: "premium", tagline: "Airy tonal blocks and understated headings.", atsRating: "compatible", supportsPhoto: true, layout: "minimal", sectionStyle: "band", skillStyle: "chips", density: "airy", headingTone: "mixed" },
   { id: "pinnacle", name: "Pinnacle", category: "premium", tagline: "Peak executive framing with numbered sections.", atsRating: "compatible", supportsPhoto: true, layout: "executive", sectionStyle: "numbered", skillStyle: "outline", density: "balanced", headingTone: "serif" },
   { id: "distinction", name: "Distinction", category: "premium", tagline: "Elegant rail and framed labels for standout careers.", atsRating: "compatible", supportsPhoto: true, layout: "rail", sectionStyle: "boxed", skillStyle: "chips", density: "airy", headingTone: "serif" },
+  { id: "veridian", name: "Veridian", category: "premium", tagline: "Deep identity rail with a spacious recruiter-first narrative.", atsRating: "compatible", supportsPhoto: true, layout: "sidebar", sectionStyle: "plain", skillStyle: "list", density: "balanced", headingTone: "mixed" },
+  { id: "boardroom", name: "Boardroom", category: "premium", tagline: "Executive statement banner with a disciplined date-led career flow.", atsRating: "compatible", supportsPhoto: false, layout: "statement", sectionStyle: "rule", skillStyle: "inline", density: "airy", headingTone: "serif" },
+  { id: "aperture", name: "Aperture", category: "premium", tagline: "Editorial showcase header with portfolio cards and a compact expertise rail.", atsRating: "creative", supportsPhoto: true, layout: "showcase", sectionStyle: "label", skillStyle: "chips", density: "airy", headingTone: "sans" },
+  { id: "maison", name: "Maison", category: "premium", tagline: "Centered portrait identity with an elegant balanced-column composition.", atsRating: "compatible", supportsPhoto: true, layout: "monogram", sectionStyle: "double-rule", skillStyle: "outline", density: "balanced", headingTone: "serif" },
 ] as const satisfies readonly ResumeTemplateCatalogEntry[];
 
 export type ResumeTemplateId = (typeof TEMPLATE_CATALOG)[number]["id"];
